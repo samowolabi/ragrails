@@ -1,0 +1,20 @@
+[project]
+name = "agent-rag-v2"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic>=0.97.0",
+    "crawl4ai>=0.8.6",
+    "flagembedding>=1.4.0",
+    "langchain-text-splitters>=1.1.2",
+    "markitdown[docx,pdf]>=0.1.5",
+    "openai>=2.32.0",
+    "playwright>=1.58.0",
+    "pymupdf4llm>=1.27.2.3",
+    "python-dotenv>=1.2.2",
+    "qdrant-client>=1.17.1",
+    "sentence-transformers>=5.4.1",
+    "voyageai>=0.3.7",
+]

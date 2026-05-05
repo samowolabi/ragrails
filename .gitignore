@@ -1,0 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+articles/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+.DS_Store
+.venv/
+files/input/
+files/output/
