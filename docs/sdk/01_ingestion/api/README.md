@@ -3,6 +3,12 @@
 Use `RagRails().fetch()` to fetch REST API responses and save each response
 page as markdown.
 
+## Install
+
+```bash
+pip install "ragrails[api]"
+```
+
 ```python
 from ragrails import RagRails
 

@@ -2,6 +2,12 @@
 
 Use `RagRails().parse()` to convert local documents into markdown.
 
+## Install
+
+```bash
+pip install "ragrails[docs]"
+```
+
 PDF files use `pymupdf4llm` first and fall back to `markitdown`. Other
 supported document types use `markitdown`.
 
@@ -35,13 +41,22 @@ Ragrails currently discovers these extensions:
 
 - `.csv`
 - `.docx`
+- `.epub`
 - `.html`
 - `.htm`
+- `.ipynb`
+- `.json`
 - `.md`
+- `.msg`
 - `.pdf`
 - `.pptx`
+- `.rss`
+- `.tsv`
 - `.txt`
+- `.xls`
 - `.xlsx`
+- `.xml`
+- `.zip`
 
 ## Ingest Selected Files
 
@@ -80,7 +95,7 @@ result = RagRails().parse(
         {
             "filename": "guide.pdf",
             "title": "Product Guide",
-            "description": "Internal product documentation.",
+            "description": "Internal product guide.",
         },
         {
             "filename": "pricing.csv",

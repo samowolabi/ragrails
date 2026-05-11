@@ -2,13 +2,26 @@
 
 Use `RagRails().scrape()` to scrape web pages into markdown files.
 
+## Install
+
+```bash
+pip install "ragrails[url]"
+```
+
+`crawl4ai` pulls in Playwright as a package dependency. You may still need to
+install browser binaries:
+
+```bash
+playwright install
+```
+
 ```python
 from ragrails import RagRails
 
 rag = RagRails()
 
 result = rag.scrape(
-    url="https://example.com/docs",
+    url="https://example.com/about",
     mode="each",
     output_dir="files/output/web_crawled",
 )
@@ -27,8 +40,8 @@ from ragrails import RagRails
 
 result = RagRails().scrape(
     url=[
-        "https://example.com/docs/auth",
-        "https://example.com/docs/payments",
+        "https://example.com/about",
+        "https://example.com/pricing",
     ],
     mode="each",
     output_dir="files/output/web_crawled",
@@ -43,7 +56,7 @@ Use `mode="full"` when you want to crawl an entire website.
 from ragrails import RagRails
 
 result = RagRails().scrape(
-    url="https://example.com/docs",
+    url="https://example.com",
     mode="full",
     output_dir="files/output/web_crawled",
     max_depth=3,
@@ -58,8 +71,8 @@ The ingestor writes markdown files:
 ```text
 files/output/web_crawled/
   001_index.md
-  002_auth.md
-  003_payments.md
+  002_about.md
+  003_pricing.md
 ```
 
 Each file includes frontmatter metadata such as:
@@ -115,9 +128,9 @@ It raises `ValueError` when:
 from ragrails import RagRails
 
 RagRails().scrape(
-    url="example.com/docs",
+    url="example.com/about",
 )
-# ValueError: Invalid URL 'example.com/docs' — use an absolute http(s) URL
+# ValueError: Invalid URL 'example.com/about' — use an absolute http(s) URL
 ```
 
 ## Error Handling
@@ -126,7 +139,7 @@ Failed crawls are recorded in the returned result.
 
 ```python
 result = RagRails().scrape(
-    url="https://example.com/docs",
+    url="https://example.com",
     mode="full",
 )
 

@@ -38,3 +38,27 @@ class ApiIngestResult:
     output_dir: str
     files: list[str]
     errors: list[str]
+
+
+@dataclass(frozen=True)
+class ChunkResult:
+    """Summary returned by `RagRails().chunk(...)`."""
+
+    files: int
+    chunks: int
+    output_dir: str
+    output_files: list[str]
+    failed: int
+    errors: list[str]
+
+
+@dataclass(frozen=True)
+class StoreResult:
+    """Summary returned by `RagRails().store(...)`."""
+
+    files: int
+    chunks: int
+    input_dir: str
+    provider: str
+    collection: str
+    errors: list[str]

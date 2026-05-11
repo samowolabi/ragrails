@@ -7,25 +7,38 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
-from rag.stg_01_ingestors.api import ingest_api as _ingest_api
-from rag.stg_01_ingestors.config import ApiIngestorConfig, DocsIngestorConfig, UrlIngestorConfig
-from rag.stg_01_ingestors.docs import ingest_docs as _ingest_docs
-from rag.stg_01_ingestors.url import scrape_url
-
-from .types import ApiIngestResult, ParseResult, ScrapeResult
+from .types import ApiIngestResult, ChunkResult, ParseResult, ScrapeResult, StoreResult
 
 
 SUPPORTED_DOCUMENT_EXTENSIONS = {
     ".csv",
     ".docx",
+    ".epub",
     ".html",
     ".htm",
+    ".ipynb",
+    ".json",
     ".md",
+    ".msg",
     ".pdf",
     ".pptx",
+    ".rss",
+    ".tsv",
     ".txt",
+    ".xls",
     ".xlsx",
+    ".xml",
+    ".zip",
 }
+
+
+def _missing_extra(feature: str, extra: str, error: ImportError) -> RuntimeError:
+    wrapped = RuntimeError(
+        f"{feature} requires optional dependencies. Install them with: "
+        f'pip install "ragrails[{extra}]"'
+    )
+    wrapped.__cause__ = error
+    return wrapped
 
 
 class RagRails:
@@ -35,7 +48,7 @@ class RagRails:
         from ragrails import RagRails
 
         result = RagRails().scrape(
-            url=["https://example.com/docs"],
+            url=["https://example.com"],
             mode="full",
             output_dir="files/output/web_crawled",
         )
@@ -61,6 +74,12 @@ class RagRails:
             max_depth=max_depth,
             max_pages=max_pages,
         )
+
+        try:
+            from ragrails.pipeline.stg_01_ingestors.config import UrlIngestorConfig
+            from ragrails.pipeline.stg_01_ingestors.url import scrape_url
+        except ImportError as exc:
+            raise _missing_extra("URL ingestion", "url", exc)
 
         config = UrlIngestorConfig(
             output_dir=output_dir,
@@ -139,6 +158,12 @@ class RagRails:
             output_dir=output_dir,
         )
 
+        try:
+            from ragrails.pipeline.stg_01_ingestors.config import DocsIngestorConfig
+            from ragrails.pipeline.stg_01_ingestors.docs import ingest_docs as _ingest_docs
+        except ImportError as exc:
+            raise _missing_extra("Document ingestion", "docs", exc)
+
         docs_input = self._discover_docs(folder) if folder else files
         docs = self._normalize_docs(docs_input)
         config = DocsIngestorConfig(
@@ -198,6 +223,12 @@ class RagRails:
             output_dir=output_dir,
         )
 
+        try:
+            from ragrails.pipeline.stg_01_ingestors.api import ingest_api as _ingest_api
+            from ragrails.pipeline.stg_01_ingestors.config import ApiIngestorConfig
+        except ImportError as exc:
+            raise _missing_extra("API ingestion", "api", exc)
+
         config = ApiIngestorConfig(output_dir=output_dir, max_pages=max_pages)
         stats = asyncio.run(
             _ingest_api(
@@ -222,6 +253,255 @@ class RagRails:
             files=stats["files"],
             errors=stats.get("errors", []),
         )
+
+    def chunk(
+        self,
+        *,
+        input_dir: str = "files/output/web_crawled",
+        output_dir: str = "files/output/chunks",
+        chunk_size: int = 2000,
+        chunk_overlap: int = 200,
+        min_chunk_length: int = 100,
+    ) -> ChunkResult:
+        """Split markdown files in a directory into RAG chunk JSON files."""
+        self._validate_chunk_args(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            min_chunk_length=min_chunk_length,
+        )
+        try:
+            from ragrails.pipeline.stg_02_chunker.chunker import chunk_dir as _chunk_dir
+            from ragrails.pipeline.stg_02_chunker.config import ChunkerConfig
+        except ImportError as exc:
+            raise _missing_extra("Chunking", "chunk", exc)
+
+        stats = _chunk_dir(ChunkerConfig(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            min_chunk_length=min_chunk_length,
+        ))
+        return ChunkResult(
+            files=stats["files"],
+            chunks=stats["chunks"],
+            output_dir=output_dir,
+            output_files=stats["output_files"],
+            failed=stats["failed"],
+            errors=stats["errors"],
+        )
+
+    def chunk_file(
+        self,
+        path: str,
+        *,
+        chunk_size: int = 2000,
+        chunk_overlap: int = 200,
+        min_chunk_length: int = 100,
+    ) -> list[dict]:
+        """Split one markdown file and return chunks in memory."""
+        self._validate_chunk_file_args(
+            path=path,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            min_chunk_length=min_chunk_length,
+        )
+        try:
+            from ragrails.pipeline.stg_02_chunker.chunker import chunk_file as _chunk_file
+            from ragrails.pipeline.stg_02_chunker.config import ChunkerConfig
+        except ImportError as exc:
+            raise _missing_extra("Chunking", "chunk", exc)
+
+        return _chunk_file(
+            path,
+            ChunkerConfig(
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                min_chunk_length=min_chunk_length,
+            ),
+        )
+
+    def store(
+        self,
+        *,
+        input_dir: str = "files/output/chunks",
+        vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant",
+        collection: str | None = None,
+        url: str | None = None,
+        files: str | list[str] | None = None,
+        batch_size: int = 64,
+        embedder: str = "voyage",
+        model: str = "voyage-3",
+    ) -> StoreResult:
+        """Embed chunk JSON files and store them in the configured vector DB."""
+        normalized_files = self._normalize_store_files(files)
+        self._validate_store_args(
+            input_dir=input_dir,
+            vector_db=vector_db,
+            collection=collection,
+            files=normalized_files,
+            batch_size=batch_size,
+            embedder=embedder,
+            model=model,
+        )
+
+        install_extra = f"store-{vector_db}" if embedder == "voyage" else f"{embedder},{vector_db}"
+        try:
+            from ragrails.models.embedder.config import EmbedderConfig as ModelEmbedderConfig
+            from ragrails.models.embedder.config import create_embedder
+            from ragrails.models.vector_db.registry import create_vector_store
+            from ragrails.pipeline.stg_03_embedder.config import EmbedderConfig as StoreConfig
+            from ragrails.pipeline.stg_03_embedder.embedder import embed_chunks
+
+            embedding_model = create_embedder(
+                ModelEmbedderConfig(provider=embedder, model=model),
+                input_type="document",
+            )
+            vector_store = create_vector_store(
+                provider=vector_db,
+                url=url,
+                collection=collection,
+            )
+            stats = embed_chunks(
+                model=embedding_model,
+                store=vector_store,
+                config=StoreConfig(batch_size=batch_size, input_type="document", input_dir=input_dir),
+                files=normalized_files,
+            )
+        except ImportError as exc:
+            raise _missing_extra("Vector storage", install_extra, exc)
+        return StoreResult(
+            files=stats["files"],
+            chunks=stats["chunks"],
+            input_dir=stats["input_dir"],
+            provider=stats["provider"],
+            collection=stats["collection"],
+            errors=stats["errors"],
+        )
+
+    @staticmethod
+    def _validate_chunk_args(
+        *,
+        input_dir: str,
+        output_dir: str,
+        chunk_size: int,
+        chunk_overlap: int,
+        min_chunk_length: int,
+    ) -> None:
+        if not input_dir:
+            raise ValueError("input_dir is required")
+        if not output_dir:
+            raise ValueError("output_dir is required")
+        base = Path(input_dir)
+        if not base.exists():
+            raise FileNotFoundError(f"Chunk input directory not found: {input_dir}")
+        if not base.is_dir():
+            raise NotADirectoryError(f"Chunk input path is not a directory: {input_dir}")
+        if not any(path.is_file() and path.suffix.lower() == ".md" for path in base.iterdir()):
+            raise ValueError(f"No markdown files found in input_dir: {input_dir}")
+        RagRails._validate_chunk_numbers(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            min_chunk_length=min_chunk_length,
+        )
+
+    @staticmethod
+    def _validate_chunk_file_args(
+        *,
+        path: str,
+        chunk_size: int,
+        chunk_overlap: int,
+        min_chunk_length: int,
+    ) -> None:
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError("path must be a non-empty string")
+        file_path = Path(path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"Chunk input file not found: {path}")
+        if not file_path.is_file():
+            raise IsADirectoryError(f"Chunk input path is not a file: {path}")
+        if file_path.suffix.lower() != ".md":
+            raise ValueError(f"Chunk input file must be markdown: {path}")
+        RagRails._validate_chunk_numbers(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            min_chunk_length=min_chunk_length,
+        )
+
+    @staticmethod
+    def _validate_chunk_numbers(
+        *,
+        chunk_size: int,
+        chunk_overlap: int,
+        min_chunk_length: int,
+    ) -> None:
+        if chunk_size < 1:
+            raise ValueError("chunk_size must be greater than 0")
+        if chunk_overlap < 0:
+            raise ValueError("chunk_overlap must be greater than or equal to 0")
+        if chunk_overlap >= chunk_size:
+            raise ValueError("chunk_overlap must be smaller than chunk_size")
+        if min_chunk_length < 1:
+            raise ValueError("min_chunk_length must be greater than 0")
+
+    @staticmethod
+    def _normalize_store_files(files: str | list[str] | None) -> list[str] | None:
+        if files is None:
+            return None
+        normalized = [files] if isinstance(files, str) else list(files)
+        if not normalized:
+            raise ValueError("files must include at least one chunk JSON filename")
+        for filename in normalized:
+            if not isinstance(filename, str) or not filename.strip():
+                raise ValueError("files values must be non-empty strings")
+        return normalized
+
+    @staticmethod
+    def _validate_store_args(
+        *,
+        input_dir: str,
+        vector_db: str,
+        collection: str | None,
+        files: list[str] | None,
+        batch_size: int,
+        embedder: str,
+        model: str,
+    ) -> None:
+        if vector_db not in {"qdrant", "pinecone", "weaviate"}:
+            raise ValueError("vector_db must be one of: qdrant, pinecone, weaviate")
+        if not input_dir:
+            raise ValueError("input_dir is required")
+        if batch_size < 1:
+            raise ValueError("batch_size must be greater than 0")
+        if not embedder:
+            raise ValueError("embedder is required")
+        if not model:
+            raise ValueError("model is required")
+        if vector_db == "pinecone" and collection and "_" in collection:
+            raise ValueError("Pinecone collection/index names cannot contain underscores. Use hyphens, e.g. 'rag-chunks'.")
+        if vector_db == "weaviate" and collection and not collection.isalnum():
+            raise ValueError("Weaviate collection names must contain only letters and digits, e.g. 'RagChunks'.")
+        if vector_db == "weaviate" and collection and not collection[:1].isupper():
+            raise ValueError("Weaviate collection names must start with an uppercase letter, e.g. 'RagChunks'.")
+
+        base = Path(input_dir)
+        if not base.exists():
+            raise FileNotFoundError(f"Store input directory not found: {input_dir}")
+        if not base.is_dir():
+            raise NotADirectoryError(f"Store input path is not a directory: {input_dir}")
+
+        paths = [base / filename for filename in files] if files else sorted(base.glob("*.json"))
+        if not paths:
+            raise ValueError(f"No chunk JSON files found in input_dir: {input_dir}")
+        for path in paths:
+            if path.suffix.lower() != ".json":
+                raise ValueError(f"Store input file must be JSON: {path.name}")
+            if not path.exists():
+                raise FileNotFoundError(f"Store input file not found: {path}")
+            if not path.is_file():
+                raise IsADirectoryError(f"Store input path is not a file: {path}")
 
     @staticmethod
     def _validate_fetch_args(

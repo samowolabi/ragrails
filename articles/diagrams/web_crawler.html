@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fetch Data from Web</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #f1f5f9;
+      letter-spacing: -0.02em;
+    }
+    p {
+      font-size: 0.875rem;
+      color: #94a3b8;
+      margin-bottom: 28px;
+    }
+    #diagram {
+      background: #1e2130;
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 700px;
+      overflow-x: auto;
+    }
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 12px;
+    }
+    button {
+      background: #339af0;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    button:hover { background: #228be6; }
+    button.secondary { background: #2d3748; }
+    button.secondary:hover { background: #3a4a5c; }
+  </style>
+</head>
+<body>
+  <h1>Fetch Data from Web</h1>
+  <p>How the web crawler gets clean content from any site</p>
+
+  <div id="diagram">
+    <div class="mermaid">
+flowchart TD
+    A([URL]) --> B[Open page in browser]
+    B --> C[Scroll to trigger\nlazy-loaded content]
+    C --> D[Wait for network idle\n+ 2s render buffer]
+    D --> E{Page loaded?}
+
+    E -->|No| F{Attempts left?}
+    F -->|Yes| G[Wait and retry\n5s · 10s · 15s]
+    G --> B
+    F -->|No| H([Dead Letter Queue])
+
+    E -->|Yes| I[Extract markdown content]
+    I --> J[Strip noise\ntracking pixels · nav · footer]
+    J --> K[Save with metadata\ntitle · url · type · timestamp]
+    K --> L{More pages\non this site?}
+
+    L -->|Yes| M[Follow next link\nin BFS queue]
+    M --> B
+    L -->|No| N[Sort files by\nURL structure]
+    N --> O([Ready for chunker])
+
+    style A fill:#339af0,color:#fff
+    style H fill:#ff6b6b,color:#fff
+    style O fill:#51cf66,color:#fff
+    </div>
+  </div>
+
+  <div class="actions">
+    <button onclick="downloadSVG()">Download SVG</button>
+    <button onclick="downloadPNG()">Download PNG</button>
+    <button class="secondary" onclick="window.print()">Save as PDF</button>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "dark", flowchart: { curve: "basis", padding: 20 } });
+
+    function getSVG() {
+      return document.querySelector("#diagram svg");
+    }
+
+    function downloadSVG() {
+      const svg = getSVG();
+      if (!svg) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([svg.outerHTML], { type: "image/svg+xml" }));
+      a.download = "web-crawler-flow.svg";
+      a.click();
+    }
+
+    function downloadPNG() {
+      const svg = getSVG();
+      if (!svg) return;
+      const scale = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width  = svg.clientWidth  * scale;
+      canvas.height = svg.clientHeight * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#1e2130";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = "web-crawler-flow.png";
+        a.click();
+      };
+      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(svg))));
+    }
+  </script>
+</body>
+</html>

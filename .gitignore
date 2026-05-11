@@ -4,18 +4,17 @@ __pycache__/
 build/
 dist/
 wheels/
-articles/
 *.egg-info
+.DS_Store
 
 # Virtual environments
-.venv
+.venv/
 
 # Local secrets
 .env
 .env.*
 !.env.example
 
-.DS_Store
-.venv/
+# Local/generated data
 files/input/
 files/output/

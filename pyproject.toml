@@ -1,20 +1,123 @@
 [project]
-name = "agent-rag-v2"
-version = "0.1.0"
-description = "Add your description here"
+name = "ragrails"
+version = "0.1.1"
+description = "A modular RAG SDK for ingesting web, document, and API sources, chunking them, and storing embeddings in pluggable vector databases."
 readme = "README.md"
 requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Sam Owolabi" },
+]
+keywords = [
+    "rag",
+    "retrieval-augmented-generation",
+    "ai",
+    "llm",
+    "agentic-ai",
+    "semantic-search",
+    "vector-search",
+    "embeddings",
+    "vector-database",
+    "qdrant",
+    "pinecone",
+    "weaviate",
+    "chunking",
+    "document-ingestion",
+    "web-scraping",
+    "api-ingestion",
+    "markdown",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Indexing",
+]
 dependencies = [
+    "python-dotenv>=1.2.2",
+]
+
+[project.optional-dependencies]
+url = [
+    "crawl4ai>=0.8.6",
+]
+docs = [
+    "markitdown[docx,pdf]>=0.1.5",
+    "pymupdf4llm>=1.27.2.3",
+]
+api = [
+    "httpx>=0.27.2",
+    "markitdown>=0.1.5",
+]
+chunk = [
+    "langchain-text-splitters>=1.1.2",
+]
+voyage = [
+    "voyageai>=0.3.7",
+]
+qdrant = [
+    "qdrant-client>=1.17.1",
+]
+pinecone = [
+    "pinecone>=9.0.0",
+]
+weaviate = [
+    "weaviate-client>=4.20.5",
+]
+openai = [
+    "openai>=2.32.0",
+]
+anthropic = [
+    "anthropic>=0.97.0",
+]
+rerank = [
+    "flagembedding>=1.4.0",
+    "sentence-transformers>=5.4.1",
+]
+store-qdrant = [
+    "langchain-text-splitters>=1.1.2",
+    "voyageai>=0.3.7",
+    "qdrant-client>=1.17.1",
+]
+store-pinecone = [
+    "langchain-text-splitters>=1.1.2",
+    "voyageai>=0.3.7",
+    "pinecone>=9.0.0",
+]
+store-weaviate = [
+    "langchain-text-splitters>=1.1.2",
+    "voyageai>=0.3.7",
+    "weaviate-client>=4.20.5",
+]
+all = [
     "anthropic>=0.97.0",
     "crawl4ai>=0.8.6",
     "flagembedding>=1.4.0",
+    "httpx>=0.27.2",
     "langchain-text-splitters>=1.1.2",
     "markitdown[docx,pdf]>=0.1.5",
     "openai>=2.32.0",
-    "playwright>=1.58.0",
+    "pinecone>=9.0.0",
     "pymupdf4llm>=1.27.2.3",
-    "python-dotenv>=1.2.2",
     "qdrant-client>=1.17.1",
     "sentence-transformers>=5.4.1",
     "voyageai>=0.3.7",
+    "weaviate-client>=4.20.5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/samowolabi/ragrails"
+Repository = "https://github.com/samowolabi/ragrails"
+Documentation = "https://github.com/samowolabi/ragrails#readme"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ragrails"]

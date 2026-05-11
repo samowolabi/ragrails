@@ -8,15 +8,31 @@ Current ingestion SDK methods:
 - [Document ingestion](documents/README.md): `RagRails().parse(...)`
 - [API ingestion](api/README.md): `RagRails().fetch(...)`
 
+## Install
+
+Install only the ingestion extra you need:
+
+```bash
+pip install "ragrails[url]"   # RagRails().scrape(...)
+pip install "ragrails[docs]"  # RagRails().parse(...)
+pip install "ragrails[api]"   # RagRails().fetch(...)
+```
+
+For all ingestion methods:
+
+```bash
+pip install "ragrails[url,docs,api]"
+```
+
 ## URL Ingestion
 
-Use URL ingestion when your source content is a web page or documentation site.
+Use URL ingestion when your source content is a web page or website.
 
 ```python
 from ragrails import RagRails
 
 result = RagRails().scrape(
-    url="https://example.com/docs",
+    url="https://example.com",
     mode="full",
     output_dir="files/output/web_crawled",
 )
