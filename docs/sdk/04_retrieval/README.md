@@ -22,6 +22,18 @@ export VECTOR_DB_COLLECTION=rag-chunks
 uv run python -m ragrails.pipeline.stg_04_retriever "How do payouts work?"
 ```
 
+## Parameters
+
+Retrieval is currently run through the stage command, not the public SDK.
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `query` | CLI argument | - | Yes | User question to search for. |
+| `VECTOR_DB_PROVIDER` | Environment variable | `qdrant` | No | Vector database provider. Supports the same registry as storage. |
+| `VECTOR_DB_COLLECTION` | Environment variable | provider default | No | Collection or index to search. |
+| `PINECONE_API_KEY` | Environment variable | - | For Pinecone | Pinecone API key. |
+| `VECTOR_DB_URL` | Environment variable | provider default | No | Vector database URL for local providers such as Qdrant or Weaviate. |
+
 For now, start with ingestion:
 
 ```python

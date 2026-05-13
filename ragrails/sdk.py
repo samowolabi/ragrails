@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
+import subprocess
+import sys
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
@@ -32,6 +35,17 @@ SUPPORTED_DOCUMENT_EXTENSIONS = {
 }
 
 
+def _run_async(coro):
+    """Run a coroutine, even when called from inside a running event loop (e.g. Jupyter)."""
+    try:
+        asyncio.get_running_loop()
+        # Already inside a loop (Jupyter, IPython) — run in a fresh thread
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
 def _missing_extra(feature: str, extra: str, error: ImportError) -> RuntimeError:
     wrapped = RuntimeError(
         f"{feature} requires optional dependencies. Install them with: "
@@ -54,6 +68,39 @@ class RagRails:
         )
     """
 
+    def setup_url(self, *, browser: str = "chromium") -> dict:
+        """Install the Playwright browser binary needed by URL ingestion.
+
+        Example:
+            from ragrails import RagRails
+
+            RagRails().setup_url()
+
+        In Jupyter, this runs against the same Python executable as the active
+        kernel, avoiding the common "browser executable does not exist" error.
+        """
+        if not browser or not browser.strip():
+            raise ValueError("browser is required")
+
+        try:
+            import playwright  # noqa: F401
+        except ImportError as exc:
+            raise _missing_extra("URL setup", "url", exc)
+
+        command = [sys.executable, "-m", "playwright", "install", browser]
+        completed = subprocess.run(command, check=False)
+        if completed.returncode != 0:
+            raise RuntimeError(
+                "Failed to install Playwright browser binary. "
+                f"Run manually: {' '.join(command)}"
+            )
+
+        return {
+            "browser": browser,
+            "command": command,
+            "returncode": completed.returncode,
+        }
+
     def scrape(
         self,
         url: str | list[str],
@@ -61,16 +108,17 @@ class RagRails:
         mode: Literal["each", "full"] = "each",
         output_dir: str = "files/output/web_crawled",
         frontmatter: bool = True,
-        dlq_path: str = "files/output/dlq.json",
+        dlq_path: str | None = None,
         max_depth: int = 3,
         max_pages: int = 200,
     ) -> ScrapeResult:
         """Scrape exact URLs or crawl a full site into markdown files."""
+        resolved_dlq_path = dlq_path or str(Path(output_dir) / "dlq.json")
         self._validate_scrape_args(
             url=url,
             mode=mode,
             output_dir=output_dir,
-            dlq_path=dlq_path,
+            dlq_path=resolved_dlq_path,
             max_depth=max_depth,
             max_pages=max_pages,
         )
@@ -83,16 +131,64 @@ class RagRails:
 
         config = UrlIngestorConfig(
             output_dir=output_dir,
-            dlq_path=dlq_path,
+            dlq_path=resolved_dlq_path,
             max_depth=max_depth,
             max_pages=max_pages,
         )
-        stats = asyncio.run(
+        stats = _run_async(
             scrape_url(
                 urls=url,
                 mode=mode,
                 config=config,
                 frontmatter=frontmatter,
+            )
+        )
+        return ScrapeResult(
+            pages=stats["pages"],
+            failed=stats["failed"],
+            output_dir=output_dir,
+            files=stats.get("files", []),
+            dlq_path=resolved_dlq_path,
+            errors=stats.get("errors", []),
+        )
+
+    def retry_scrape(
+        self,
+        dlq_path: str,
+        *,
+        mode: Literal["each", "full"] = "each",
+        max_depth: int = 3,
+        max_pages: int = 200,
+        max_attempts: int = 3,
+    ) -> ScrapeResult:
+        """Retry failed URLs recorded in the scrape dead-letter queue."""
+        output_dir = str(Path(dlq_path).parent)
+        self._validate_retry_scrape_args(
+            mode=mode,
+            output_dir=output_dir,
+            dlq_path=dlq_path,
+            max_depth=max_depth,
+            max_pages=max_pages,
+            max_attempts=max_attempts,
+        )
+
+        try:
+            from ragrails.pipeline.stg_01_ingestors.config import UrlIngestorConfig
+            from ragrails.pipeline.stg_01_ingestors.url import retry_dlq
+        except ImportError as exc:
+            raise _missing_extra("URL ingestion", "url", exc)
+
+        config = UrlIngestorConfig(
+            output_dir=output_dir,
+            dlq_path=dlq_path,
+            max_depth=max_depth,
+            max_pages=max_pages,
+        )
+        stats = _run_async(
+            retry_dlq(
+                mode=mode,
+                config=config,
+                max_attempts=max_attempts,
             )
         )
         return ScrapeResult(
@@ -136,6 +232,29 @@ class RagRails:
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                 raise ValueError(f"Invalid URL '{item}' — use an absolute http(s) URL")
 
+    @staticmethod
+    def _validate_retry_scrape_args(
+        *,
+        mode: str,
+        output_dir: str,
+        dlq_path: str,
+        max_depth: int,
+        max_pages: int,
+        max_attempts: int,
+    ) -> None:
+        if mode not in {"each", "full"}:
+            raise ValueError(f"Invalid mode '{mode}' — use 'each' or 'full'")
+        if not output_dir:
+            raise ValueError("output_dir is required")
+        if not dlq_path:
+            raise ValueError("dlq_path is required")
+        if max_depth < 0:
+            raise ValueError("max_depth must be greater than or equal to 0")
+        if max_pages < 1:
+            raise ValueError("max_pages must be greater than 0")
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be greater than 0")
+
     def parse(
         self,
         files: str | list[str | dict] | None = None,
@@ -162,7 +281,7 @@ class RagRails:
             from ragrails.pipeline.stg_01_ingestors.config import DocsIngestorConfig
             from ragrails.pipeline.stg_01_ingestors.docs import ingest_docs as _ingest_docs
         except ImportError as exc:
-            raise _missing_extra("Document ingestion", "docs", exc)
+            raise RuntimeError("Document ingestion dependencies are missing. Reinstall with: pip install -U ragrails") from exc
 
         docs_input = self._discover_docs(folder) if folder else files
         docs = self._normalize_docs(docs_input)
@@ -227,10 +346,10 @@ class RagRails:
             from ragrails.pipeline.stg_01_ingestors.api import ingest_api as _ingest_api
             from ragrails.pipeline.stg_01_ingestors.config import ApiIngestorConfig
         except ImportError as exc:
-            raise _missing_extra("API ingestion", "api", exc)
+            raise RuntimeError("API ingestion dependencies are missing. Reinstall with: pip install -U ragrails") from exc
 
         config = ApiIngestorConfig(output_dir=output_dir, max_pages=max_pages)
-        stats = asyncio.run(
+        stats = _run_async(
             _ingest_api(
                 url=url,
                 title=title,

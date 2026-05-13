@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 @dataclass
 class UrlIngestorConfig:
     output_dir: str = "files/output/web_crawled"
-    dlq_path: str = "files/output/dlq.json"
+    dlq_path: str = "files/output/web_crawled/dlq.json"
     max_depth: int = 3
     max_pages: int = 200
     rate_limit: float = 1.0

@@ -5,15 +5,17 @@
 [![Downloads](https://static.pepy.tech/badge/ragrails)](https://pepy.tech/project/ragrails)
 [![License](https://img.shields.io/pypi/l/ragrails)](LICENSE)
 
-Ragrails is a modular RAG SDK for ingesting web pages, local documents, and REST
-API responses, converting them into clean markdown, chunking them for retrieval,
-and storing embeddings in pluggable vector databases.
+Ragrails is a modular RAG SDK for turning web pages, local documents, and REST
+API responses into retrieval-ready knowledge bases.
 
-It is built for retrieval-augmented generation workflows that need source
-ingestion, markdown normalization, chunking, semantic search, vector storage,
-and evaluation as separate stages.
+Documentation: [https://dev.ragrails.com](https://dev.ragrails.com)
 
-The public SDK starts with one class:
+It gives you one Python interface for:
+
+- ingesting URLs, documents, and API responses into markdown
+- chunking markdown into RAG-ready JSON chunks
+- embedding and storing chunks in pluggable vector databases
+- building toward retrieval, chat, and evaluation workflows
 
 ```python
 from ragrails import RagRails
@@ -21,53 +23,27 @@ from ragrails import RagRails
 rag = RagRails()
 ```
 
-## Current SDK
+## Install
 
-The ingestion, chunking, and vector storage SDK surfaces are available now.
-
-```python
-rag.scrape(...)  # web pages and websites
-rag.parse(...)   # local files and folders
-rag.fetch(...)   # REST API responses
-rag.chunk(...)   # markdown files to RAG chunks
-rag.store(...)   # chunk JSON files to a vector DB
-```
-
-Detailed SDK docs:
-
-1. [Ingestion](docs/sdk/01_ingestion/README.md)
-   - [URL ingestion](docs/sdk/01_ingestion/url/README.md)
-   - [Document ingestion](docs/sdk/01_ingestion/documents/README.md)
-   - [API ingestion](docs/sdk/01_ingestion/api/README.md)
-2. [Chunking](docs/sdk/02_chunking/README.md)
-3. [Embedding](docs/sdk/03_embedding/README.md)
-4. [Retrieval](docs/sdk/04_retrieval/README.md)
-
-## Installation
-
-Install the lightweight SDK:
+Ragrails requires **Python 3.10 or newer**. The macOS system Python is 3.9 and
+will not work. Install a supported version from [python.org](https://www.python.org/downloads/)
+or via your package manager before running the install command.
 
 ```bash
 pip install ragrails
 ```
 
-This is enough to import the SDK:
+Document and API ingestion are included in the base install. Install extras only
+for heavier stages or providers.
 
-```python
-from ragrails import RagRails
-```
-
-Install extras for the stage or provider you need.
-
-| Stage | Install |
+| Need | Install |
 |---|---|
 | URL ingestion | `pip install "ragrails[url]"` |
-| Document ingestion | `pip install "ragrails[docs]"` |
-| API ingestion | `pip install "ragrails[api]"` |
 | Chunking | `pip install "ragrails[chunk]"` |
 | Store in Qdrant | `pip install "ragrails[store-qdrant]"` |
 | Store in Pinecone | `pip install "ragrails[store-pinecone]"` |
 | Store in Weaviate | `pip install "ragrails[store-weaviate]"` |
+| Everything | `pip install "ragrails[all]"` |
 
 Provider extras are also available separately:
 
@@ -80,162 +56,135 @@ Provider extras are also available separately:
 | OpenAI | `pip install "ragrails[openai]"` |
 | Anthropic | `pip install "ragrails[anthropic]"` |
 | Reranking | `pip install "ragrails[rerank]"` |
-| Everything | `pip install "ragrails[all]"` |
 
-Common workflow installs:
+## Quick Start
 
-| Workflow | Install |
-|---|---|
-| Scrape URLs, chunk, store in Qdrant | `pip install "ragrails[url,chunk,voyage,qdrant]"` |
-| Parse documents, chunk, store in Pinecone | `pip install "ragrails[docs,chunk,voyage,pinecone]"` |
-| Fetch APIs, chunk, store in Weaviate | `pip install "ragrails[api,chunk,voyage,weaviate]"` |
-| Qdrant storage shortcut | `pip install "ragrails[store-qdrant]"` |
-| Pinecone storage shortcut | `pip install "ragrails[store-pinecone]"` |
-| Weaviate storage shortcut | `pip install "ragrails[store-weaviate]"` |
-
-`crawl4ai` pulls in Playwright as a package dependency for URL ingestion. You may
-still need to install browser binaries:
+### URL to Vector DB
 
 ```bash
-playwright install
+pip install "ragrails[url,chunk,voyage,qdrant]"
 ```
 
-## Requirements
-
-Later RAG stages use provider API keys:
-
-```bash
-export VOYAGE_API_KEY="..."
-export OPENAI_API_KEY="..."
-export ANTHROPIC_API_KEY="..."
-```
-
-Embedding and retrieval also need a vector database. Ragrails currently ships
-with Qdrant, Pinecone, and Weaviate adapters behind the same vector store
-interface.
-
-## Vector DB Providers
-
-Choose a vector DB provider before storing, retrieving, chatting, or running
-evals.
-
-Provider names:
-
-```text
-qdrant
-pinecone
-weaviate
-```
-
-### Qdrant
-
-Qdrant is the easiest local option while developing.
-
-```bash
-docker run -p 6333:6333 qdrant/qdrant
-```
-
-```bash
-export VECTOR_DB_PROVIDER=qdrant
-export VECTOR_DB_URL=http://localhost:6333
-export VECTOR_DB_COLLECTION=rag_chunks
-```
-
-### Pinecone
-
-Pinecone is the managed vector DB option. Ragrails uses its existing embedding
-model and stores dense vectors in a Pinecone serverless index.
-
-```bash
-export PINECONE_API_KEY="..."
-export VECTOR_DB_PROVIDER=pinecone
-export VECTOR_DB_COLLECTION=rag-chunks
-```
-
-Optional Pinecone settings:
-
-```bash
-export PINECONE_CLOUD=aws
-export PINECONE_REGION=us-east-1
-export PINECONE_NAMESPACE=
-```
-
-For Pinecone, `VECTOR_DB_COLLECTION` maps to the Pinecone index name. Use
-lowercase letters, digits, and hyphens only, for example `rag-chunks`.
-
-### Weaviate
-
-Weaviate is another managed or self-hosted vector DB option. Ragrails uses its
-own embedding model and stores dense vectors in a Weaviate collection configured
-for self-provided vectors.
-
-For local Weaviate, expose both HTTP and gRPC ports:
-
-```bash
-docker run -p 8080:8080 -p 50051:50051 cr.weaviate.io/semitechnologies/weaviate:1.36.9
-```
-
-```bash
-export VECTOR_DB_PROVIDER=weaviate
-export VECTOR_DB_URL=http://localhost:8080
-export VECTOR_DB_COLLECTION=RagChunks
-```
-
-For Weaviate Cloud:
-
-```bash
-export WEAVIATE_API_KEY="..."
-export VECTOR_DB_PROVIDER=weaviate
-export VECTOR_DB_URL="https://your-cluster.weaviate.cloud"
-export VECTOR_DB_COLLECTION=RagChunks
-```
-
-For Weaviate, `VECTOR_DB_COLLECTION` maps to the collection name. Use a name
-that starts with an uppercase letter, for example `RagChunks`.
-
-After choosing a provider, store chunks with the SDK:
+URL scraping uses Playwright through `crawl4ai`. Run browser setup once in the
+same environment:
 
 ```python
 from ragrails import RagRails
 
-result = RagRails().store(
-    input_dir="files/output/chunks",
+rag = RagRails()
+rag.setup_url()
+```
+
+Then run the pipeline:
+
+```python
+from ragrails import RagRails
+
+rag = RagRails()
+
+scraped = rag.scrape(
+    url="https://example.com",
+    mode="full",
+    output_dir="files/output/web_crawled",
+)
+
+chunks = rag.chunk(
+    input_dir=scraped.output_dir,
+    output_dir="files/output/chunks/web",
+)
+
+stored = rag.store(
+    input_dir=chunks.output_dir,
     vector_db="qdrant",
     collection="rag_chunks",
 )
 
-print(result.files)
-print(result.chunks)
-print(result.provider)
-print(result.collection)
+print(stored.chunks)
 ```
 
-The lower-level stage runner also reads the same environment variables:
+### Documents to Vector DB
 
 ```bash
-uv run python -m ragrails.pipeline.stg_03_embedder
-uv run python -m ragrails.pipeline.stg_04_retriever "your query"
+pip install "ragrails[chunk,voyage,qdrant]"
 ```
-
-## URL Ingestion
-
-Scrape one exact page:
 
 ```python
 from ragrails import RagRails
 
+rag = RagRails()
+
+parsed = rag.parse(
+    folder="files/input",
+    output_dir="files/output/docs",
+)
+
+chunks = rag.chunk(
+    input_dir=parsed.output_dir,
+    output_dir="files/output/chunks/docs",
+)
+
+stored = rag.store(
+    input_dir=chunks.output_dir,
+    vector_db="qdrant",
+    collection="rag_chunks",
+)
+
+print(stored.chunks)
+```
+
+### API to Markdown
+
+```python
+from ragrails import RagRails
+
+result = RagRails().fetch(
+    url="https://api.example.com/v1/products",
+    title="Products",
+    output_dir="files/output/api",
+)
+
+print(result.files)
+```
+
+## SDK Stages
+
+| Stage | Method | Output |
+|---|---|---|
+| URL ingestion | `rag.scrape(...)` | Markdown files |
+| URL retry | `rag.retry_scrape(...)` | Retried markdown files |
+| Document ingestion | `rag.parse(...)` | Markdown files |
+| API ingestion | `rag.fetch(...)` | Markdown files |
+| Chunking | `rag.chunk(...)` | JSON chunk files |
+| Single-file chunk preview | `rag.chunk_file(...)` | In-memory chunk dictionaries |
+| Vector storage | `rag.store(...)` | Embedded vectors in a vector DB |
+
+Hosted documentation:
+
+- [https://dev.ragrails.com](https://dev.ragrails.com)
+
+Repository docs:
+
+- [Ingestion](docs/sdk/01_ingestion/README.md)
+- [URL ingestion](docs/sdk/01_ingestion/url/README.md)
+- [Document ingestion](docs/sdk/01_ingestion/documents/README.md)
+- [API ingestion](docs/sdk/01_ingestion/api/README.md)
+- [Chunking](docs/sdk/02_chunking/README.md)
+- [Embedding and storage](docs/sdk/03_embedding/README.md)
+- [Retrieval](docs/sdk/04_retrieval/README.md)
+
+## Ingestion
+
+### URL Ingestion
+
+```python
 result = RagRails().scrape(
     url="https://example.com/about",
     mode="each",
     output_dir="files/output/web_crawled",
 )
-
-print(result.pages)
-print(result.files)
-print(result.errors)
 ```
 
-Crawl a website:
+For full-site crawling:
 
 ```python
 result = RagRails().scrape(
@@ -247,104 +196,61 @@ result = RagRails().scrape(
 )
 ```
 
-## Document Ingestion
+Failed URL attempts are written to `dlq.json` inside the output folder by
+default:
 
-Parse a folder of local documents into markdown:
+```text
+files/output/web_crawled/dlq.json
+```
+
+Retry failed URLs:
 
 ```python
-from ragrails import RagRails
+result = RagRails().retry_scrape(
+    "files/output/web_crawled/dlq.json",
+)
+```
 
+### Document Ingestion
+
+```python
 result = RagRails().parse(
     folder="files/input",
     output_dir="files/output/docs",
 )
-
-print(result.documents)
-print(result.files)
-print(result.errors)
 ```
 
-Parse selected files with custom metadata:
-
-```python
-result = RagRails().parse(
-    files=[
-        {
-            "filename": "guide.pdf",
-            "title": "Product Guide",
-            "description": "Internal product guide.",
-        }
-    ],
-    input_dir="files/input",
-    output_dir="files/output/docs",
-)
-```
-
-Supported discovery extensions for folders:
+Supported folder discovery extensions:
 
 ```text
 .csv, .docx, .epub, .html, .htm, .ipynb, .json, .md, .msg,
 .pdf, .pptx, .rss, .tsv, .txt, .xls, .xlsx, .xml, .zip
 ```
 
-## API Ingestion
-
-Fetch a REST API response into markdown:
-
-```python
-from ragrails import RagRails
-
-result = RagRails().fetch(
-    url="https://api.example.com/v1/products",
-    title="Products",
-    description="Product catalog from the API.",
-    output_dir="files/output/api",
-)
-
-print(result.pages)
-print(result.items)
-print(result.files)
-print(result.errors)
-```
-
-Pass request options when needed:
+### API Ingestion
 
 ```python
 result = RagRails().fetch(
     url="https://api.example.com/v1/search",
     method="POST",
-    headers={"Authorization": "Bearer <token>"},
+    headers={
+        "Authorization": "Bearer <token>",
+        "X-Api-Key": "my-key",
+    },
     body={"query": "payments"},
     title="Search Results",
+    output_dir="files/output/api",
 )
 ```
 
 ## Chunking
 
-Split markdown files into RAG-ready JSON chunks:
-
-```python
-from ragrails import RagRails
-
-result = RagRails().chunk(
-    input_dir="files/output/web_crawled",
-    output_dir="files/output/chunks",
-)
-
-print(result.files)
-print(result.chunks)
-print(result.output_files)
-print(result.errors)
-```
-
-Chunk markdown created by any ingestion method:
-
 ```python
 result = RagRails().chunk(
     input_dir="files/output/docs",
     output_dir="files/output/chunks/docs",
-    chunk_size=1200,
-    chunk_overlap=150,
+    chunk_size=2000,
+    chunk_overlap=200,
 )
 ```
 
@@ -354,30 +260,36 @@ Preview one markdown file in memory:
 chunks = RagRails().chunk_file(
     "files/output/docs/guide.md",
 )
-
-print(len(chunks))
-print(chunks[0]["metadata"])
 ```
 
-## Store
+## Vector Storage
 
-Embed every chunk JSON file in a folder and store the vectors:
+Ragrails currently supports Qdrant, Pinecone, and Weaviate as storage providers.
+
+Set provider credentials as needed:
+
+```bash
+export VOYAGE_API_KEY="..."
+export PINECONE_API_KEY="..."
+export WEAVIATE_API_KEY="..."
+```
+
+Qdrant local example:
+
+```bash
+docker run -p 6333:6333 qdrant/qdrant
+```
 
 ```python
-from ragrails import RagRails
-
 result = RagRails().store(
     input_dir="files/output/chunks/docs",
     vector_db="qdrant",
+    url="http://localhost:6333",
     collection="rag_chunks",
 )
-
-print(result.files)
-print(result.chunks)
-print(result.errors)
 ```
 
-Store in Pinecone:
+Pinecone example:
 
 ```python
 result = RagRails().store(
@@ -387,7 +299,7 @@ result = RagRails().store(
 )
 ```
 
-Store in Weaviate:
+Weaviate example:
 
 ```python
 result = RagRails().store(
@@ -398,38 +310,13 @@ result = RagRails().store(
 )
 ```
 
-Store selected chunk files from a folder:
+Provider naming rules:
 
-```python
-result = RagRails().store(
-    input_dir="files/output/chunks/docs",
-    files=["001_overview.json", "002_auth.json"],
-    vector_db="qdrant",
-    collection="rag_chunks",
-)
-```
-
-Provider-specific failures to check first:
-
-```text
-qdrant    Qdrant is not running, or port 6333 is not exposed.
-pinecone  PINECONE_API_KEY is missing, or the index name uses underscores.
-weaviate  Weaviate is not running, gRPC 50051 is not exposed, or the collection name is invalid.
-```
-
-## Output
-
-Ragrails writes markdown files to the output directory you choose:
-
-```text
-files/output/web_crawled/
-files/output/docs/
-files/output/api/
-files/output/chunks/
-```
-
-By default, files include Ragrails frontmatter metadata. Disable it with
-`frontmatter=False` when you only want the markdown body.
+| Provider | Collection name |
+|---|---|
+| Qdrant | Any valid Qdrant collection name, for example `rag_chunks` |
+| Pinecone | Lowercase letters, digits, and hyphens, for example `rag-chunks` |
+| Weaviate | Starts with an uppercase letter, for example `RagChunks` |
 
 ## Result Types
 
@@ -487,93 +374,96 @@ StoreResult(
 )
 ```
 
-## API Reference
+## Parameter Reference
 
-```python
-RagRails().scrape(
-    url,
-    *,
-    mode="each",
-    output_dir="files/output/web_crawled",
-    frontmatter=True,
-    dlq_path="files/output/dlq.json",
-    max_depth=3,
-    max_pages=200,
-)
-```
+### `setup_url()`
 
-```python
-RagRails().parse(
-    files=None,
-    *,
-    folder=None,
-    input_dir="files/input",
-    output_dir="files/output/docs",
-    frontmatter=True,
-)
-```
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `browser` | `str` | `"chromium"` | No | Playwright browser binary to install for URL scraping. |
 
-```python
-RagRails().fetch(
-    url,
-    *,
-    title="API Response",
-    description="",
-    method="GET",
-    headers=None,
-    params=None,
-    body=None,
-    pagination=None,
-    max_pages=100,
-    output_dir="files/output/api",
-    frontmatter=True,
-)
-```
+### `scrape()`
 
-```python
-RagRails().chunk(
-    *,
-    input_dir="files/output/web_crawled",
-    output_dir="files/output/chunks",
-    chunk_size=2000,
-    chunk_overlap=200,
-    min_chunk_length=100,
-)
-```
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `url` | `str \| list[str]` | - | Yes | URL or URLs to scrape. |
+| `mode` | `"each" \| "full"` | `"each"` | No | Scrape exact URLs or crawl full sites. |
+| `output_dir` | `str` | `"files/output/web_crawled"` | No | Markdown output folder. |
+| `frontmatter` | `bool` | `True` | No | Add source metadata to markdown files. |
+| `dlq_path` | `str \| None` | `None` | No | Custom DLQ file. Defaults to `<output_dir>/dlq.json`. |
+| `max_depth` | `int` | `3` | No | Crawl depth for `mode="full"`. |
+| `max_pages` | `int` | `200` | No | Maximum pages per site. |
 
-```python
-RagRails().chunk_file(
-    path,
-    *,
-    chunk_size=2000,
-    chunk_overlap=200,
-    min_chunk_length=100,
-)
-```
+### `retry_scrape()`
 
-```python
-RagRails().store(
-    *,
-    input_dir="files/output/chunks",
-    vector_db="qdrant",
-    collection=None,
-    url=None,
-    files=None,
-    batch_size=64,
-    embedder="voyage",
-    model="voyage-3",
-)
-```
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `dlq_path` | `str` | - | Yes | DLQ file to retry. |
+| `mode` | `"each" \| "full"` | `"each"` | No | Retry as exact pages or full-site crawls. |
+| `max_depth` | `int` | `3` | No | Crawl depth for `mode="full"`. |
+| `max_pages` | `int` | `200` | No | Maximum pages per site. |
+| `max_attempts` | `int` | `3` | No | Retry entries below this attempt count. |
 
-Supported `vector_db` values:
+### `parse()`
 
-```text
-qdrant
-pinecone
-weaviate
-```
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `files` | `str \| list[str \| dict] \| None` | `None` | Conditional | Specific files to parse. |
+| `folder` | `str \| None` | `None` | Conditional | Folder of supported files to parse. |
+| `input_dir` | `str` | `"files/input"` | No | Base folder for `files`. |
+| `output_dir` | `str` | `"files/output/docs"` | No | Markdown output folder. |
+| `frontmatter` | `bool` | `True` | No | Add document metadata to markdown files. |
+
+### `fetch()`
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `url` | `str` | - | Yes | API endpoint URL. |
+| `title` | `str` | `"API Response"` | No | Output metadata title. |
+| `description` | `str` | `""` | No | Output metadata description. |
+| `method` | `str` | `"GET"` | No | HTTP method. |
+| `headers` | `dict \| None` | `None` | No | Request headers. Multiple headers are supported. |
+| `params` | `dict \| None` | `None` | No | Query parameters. |
+| `body` | `dict \| None` | `None` | No | JSON request body. |
+| `pagination` | `dict \| None` | `None` | No | Pagination configuration. |
+| `max_pages` | `int` | `100` | No | Maximum API pages to fetch. |
+| `output_dir` | `str` | `"files/output/api"` | No | Markdown output folder. |
+| `frontmatter` | `bool` | `True` | No | Add API metadata to markdown files. |
+
+### `chunk()`
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `input_dir` | `str` | `"files/output/web_crawled"` | No | Folder containing markdown files. |
+| `output_dir` | `str` | `"files/output/chunks"` | No | JSON chunk output folder. |
+| `chunk_size` | `int` | `2000` | No | Target maximum chunk size. |
+| `chunk_overlap` | `int` | `200` | No | Overlap between chunks. |
+| `min_chunk_length` | `int` | `100` | No | Minimum chunk length to keep. |
+
+### `chunk_file()`
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `path` | `str` | - | Yes | Markdown file path to chunk in memory. |
+| `chunk_size` | `int` | `2000` | No | Target maximum chunk size. |
+| `chunk_overlap` | `int` | `200` | No | Overlap between chunks. |
+| `min_chunk_length` | `int` | `100` | No | Minimum chunk length to keep. |
+
+### `store()`
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `input_dir` | `str` | `"files/output/chunks"` | No | Folder of chunk JSON files. |
+| `vector_db` | `"qdrant" \| "pinecone" \| "weaviate"` | `"qdrant"` | No | Vector database provider. |
+| `collection` | `str \| None` | `None` | No | Collection, index, or class name. |
+| `url` | `str \| None` | `None` | No | Vector database URL. |
+| `files` | `str \| list[str] \| None` | `None` | No | Selected chunk files to store. |
+| `batch_size` | `int` | `64` | No | Chunks per embedding/storage batch. |
+| `embedder` | `str` | `"voyage"` | No | Embedding provider. |
+| `model` | `str` | `"voyage-3"` | No | Embedding model name. |
 
 ## Status
 
-Ingestion, chunking, and vector storage are available through the public SDK.
-Retrieval, chat, and eval already exist internally and will be exposed next.
+The public SDK currently covers ingestion, chunking, and vector storage.
+Retrieval, chat, and eval exist internally and will be exposed as public SDK
+surfaces next.

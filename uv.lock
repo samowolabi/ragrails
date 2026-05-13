@@ -2740,9 +2740,12 @@ wheels = [
 
 [[package]]
 name = "ragrails"
-version = "0.1.0"
+version = "0.1.4"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
+    { name = "markitdown", extra = ["docx", "pdf"] },
+    { name = "pymupdf4llm" },
     { name = "python-dotenv" },
 ]
 
@@ -2765,16 +2768,8 @@ all = [
 anthropic = [
     { name = "anthropic" },
 ]
-api = [
-    { name = "httpx" },
-    { name = "markitdown" },
-]
 chunk = [
     { name = "langchain-text-splitters" },
-]
-docs = [
-    { name = "markitdown", extra = ["docx", "pdf"] },
-    { name = "pymupdf4llm" },
 ]
 openai = [
     { name = "openai" },
@@ -2822,23 +2817,22 @@ requires-dist = [
     { name = "crawl4ai", marker = "extra == 'url'", specifier = ">=0.8.6" },
     { name = "flagembedding", marker = "extra == 'all'", specifier = ">=1.4.0" },
     { name = "flagembedding", marker = "extra == 'rerank'", specifier = ">=1.4.0" },
+    { name = "httpx", specifier = ">=0.27.2" },
     { name = "httpx", marker = "extra == 'all'", specifier = ">=0.27.2" },
-    { name = "httpx", marker = "extra == 'api'", specifier = ">=0.27.2" },
     { name = "langchain-text-splitters", marker = "extra == 'all'", specifier = ">=1.1.2" },
     { name = "langchain-text-splitters", marker = "extra == 'chunk'", specifier = ">=1.1.2" },
     { name = "langchain-text-splitters", marker = "extra == 'store-pinecone'", specifier = ">=1.1.2" },
     { name = "langchain-text-splitters", marker = "extra == 'store-qdrant'", specifier = ">=1.1.2" },
     { name = "langchain-text-splitters", marker = "extra == 'store-weaviate'", specifier = ">=1.1.2" },
-    { name = "markitdown", marker = "extra == 'api'", specifier = ">=0.1.5" },
+    { name = "markitdown", extras = ["docx", "pdf"], specifier = ">=0.1.5" },
     { name = "markitdown", extras = ["docx", "pdf"], marker = "extra == 'all'", specifier = ">=0.1.5" },
-    { name = "markitdown", extras = ["docx", "pdf"], marker = "extra == 'docs'", specifier = ">=0.1.5" },
     { name = "openai", marker = "extra == 'all'", specifier = ">=2.32.0" },
     { name = "openai", marker = "extra == 'openai'", specifier = ">=2.32.0" },
     { name = "pinecone", marker = "extra == 'all'", specifier = ">=9.0.0" },
     { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=9.0.0" },
     { name = "pinecone", marker = "extra == 'store-pinecone'", specifier = ">=9.0.0" },
+    { name = "pymupdf4llm", specifier = ">=1.27.2.3" },
     { name = "pymupdf4llm", marker = "extra == 'all'", specifier = ">=1.27.2.3" },
-    { name = "pymupdf4llm", marker = "extra == 'docs'", specifier = ">=1.27.2.3" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "qdrant-client", marker = "extra == 'all'", specifier = ">=1.17.1" },
     { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.17.1" },
@@ -2854,7 +2848,7 @@ requires-dist = [
     { name = "weaviate-client", marker = "extra == 'store-weaviate'", specifier = ">=4.20.5" },
     { name = "weaviate-client", marker = "extra == 'weaviate'", specifier = ">=4.20.5" },
 ]
-provides-extras = ["url", "docs", "api", "chunk", "voyage", "qdrant", "pinecone", "weaviate", "openai", "anthropic", "rerank", "store-qdrant", "store-pinecone", "store-weaviate", "all"]
+provides-extras = ["url", "chunk", "voyage", "qdrant", "pinecone", "weaviate", "openai", "anthropic", "rerank", "store-qdrant", "store-pinecone", "store-weaviate", "all"]
 
 [[package]]
 name = "rank-bm25"

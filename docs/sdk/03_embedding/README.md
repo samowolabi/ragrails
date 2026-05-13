@@ -226,6 +226,35 @@ OpenCodeChunks
 BudPayChunks
 ```
 
+## Function
+
+```python
+RagRails().store(
+    *,
+    input_dir="files/output/chunks",
+    vector_db="qdrant",
+    collection=None,
+    url=None,
+    files=None,
+    batch_size=64,
+    embedder="voyage",
+    model="voyage-3",
+)
+```
+
+### `store()` Parameters
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `input_dir` | `str` | `"files/output/chunks"` | No | Folder containing Ragrails chunk JSON files. |
+| `vector_db` | `"qdrant" \| "pinecone" \| "weaviate"` | `"qdrant"` | No | Vector database provider to write to. |
+| `collection` | `str \| None` | `None` | No | Collection, index, or class name, depending on provider. Provider defaults may apply when omitted. |
+| `url` | `str \| None` | `None` | No | Vector database URL. Useful for local Qdrant or Weaviate. |
+| `files` | `str \| list[str] \| None` | `None` | No | Store only selected chunk JSON files from `input_dir`. |
+| `batch_size` | `int` | `64` | No | Number of chunks embedded and stored per batch. |
+| `embedder` | `str` | `"voyage"` | No | Embedding provider. Currently Voyage is the documented SDK path. |
+| `model` | `str` | `"voyage-3"` | No | Embedding model name passed to the embedder. |
+
 ## Result
 
 ```python

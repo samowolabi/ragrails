@@ -140,6 +140,23 @@ def _frontmatter(url: str, status_code: int, meta: dict) -> str:
     )
 
 
+def _browser_setup_error(error: Exception) -> str:
+    """Return a user-actionable Playwright browser setup error."""
+    message = str(error)
+    if "playwright install" not in message and "Executable doesn't exist" not in message:
+        return f"Browser setup failed: {message}"
+
+    return (
+        "Browser setup failed: Playwright browser binaries are missing. "
+        "Run this once in the same Python environment that runs Ragrails:\n"
+        "    from ragrails import RagRails\n"
+        "    RagRails().setup_url()\n"
+        "Or run manually:\n"
+        "    python -m playwright install chromium\n"
+        f"Original error: {message}"
+    )
+
+
 def _save(
     content: str,
     url: str,
@@ -386,7 +403,7 @@ async def scrape_url(
                 totals["errors"].extend(stats.get("errors", []))
                 totals["crawled"].setdefault(site_dir, []).extend(stats.get("crawled", []))
     except Exception as e:
-        message = f"Browser setup failed: {e}"
+        message = _browser_setup_error(e)
         print(f"  ✗ {message}")
         totals["failed"] += len(url_list)
         totals["errors"].append(message)
@@ -416,7 +433,7 @@ async def retry_dlq(
     urls = dlq_store.pending(cfg.dlq_path, max_attempts=max_attempts)
     if not urls:
         print("DLQ is empty — nothing to retry.")
-        return
+        return {"pages": 0, "failed": 0, "total_kb": 0.0, "page_times": [], "crawled": {}, "files": [], "errors": []}
 
     print(f"Retrying {len(urls)} URL(s) from DLQ...")
     return await scrape_url(urls, mode=mode, config=cfg)

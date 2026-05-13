@@ -183,6 +183,16 @@ RagRails().chunk(
 )
 ```
 
+### `chunk()` Parameters
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `input_dir` | `str` | `"files/output/web_crawled"` | No | Folder containing markdown files to chunk. |
+| `output_dir` | `str` | `"files/output/chunks"` | No | Folder where chunk JSON files are written. |
+| `chunk_size` | `int` | `2000` | No | Target maximum chunk size in characters. |
+| `chunk_overlap` | `int` | `200` | No | Character overlap between neighboring chunks. |
+| `min_chunk_length` | `int` | `100` | No | Minimum chunk length to keep. Shorter chunks are dropped. |
+
 ```python
 RagRails().chunk_file(
     path,
@@ -192,6 +202,15 @@ RagRails().chunk_file(
     min_chunk_length=100,
 )
 ```
+
+### `chunk_file()` Parameters
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `path` | `str` | - | Yes | Path to one markdown file to chunk in memory. |
+| `chunk_size` | `int` | `2000` | No | Target maximum chunk size in characters. |
+| `chunk_overlap` | `int` | `200` | No | Character overlap between neighboring chunks. |
+| `min_chunk_length` | `int` | `100` | No | Minimum chunk length to keep. Shorter chunks are dropped. |
 
 ## Result
 

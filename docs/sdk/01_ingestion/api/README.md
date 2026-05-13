@@ -6,7 +6,7 @@ page as markdown.
 ## Install
 
 ```bash
-pip install "ragrails[api]"
+pip install ragrails
 ```
 
 ```python
@@ -122,6 +122,22 @@ RagRails().fetch(
     frontmatter=True,
 )
 ```
+
+### `fetch()` Parameters
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `url` | `str` | - | Yes | Absolute `http` or `https` API endpoint. |
+| `title` | `str` | `"API Response"` | No | Title written into output metadata. |
+| `description` | `str` | `""` | No | Description written into output metadata. |
+| `method` | `str` | `"GET"` | No | HTTP method. Supports `GET`, `POST`, `PUT`, `PATCH`, and `DELETE`. |
+| `headers` | `dict \| None` | `None` | No | Request headers, for example authorization headers. |
+| `params` | `dict \| None` | `None` | No | Query string parameters. |
+| `body` | `dict \| None` | `None` | No | JSON request body for methods such as `POST` or `PATCH`. |
+| `pagination` | `dict \| None` | `None` | No | Pagination configuration for multi-page APIs. |
+| `max_pages` | `int` | `100` | No | Maximum number of response pages to fetch. |
+| `output_dir` | `str` | `"files/output/api"` | No | Folder where markdown files are written. |
+| `frontmatter` | `bool` | `True` | No | Adds API metadata to the top of each markdown file. |
 
 ## Result
 

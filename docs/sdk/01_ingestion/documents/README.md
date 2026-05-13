@@ -5,7 +5,7 @@ Use `RagRails().parse()` to convert local documents into markdown.
 ## Install
 
 ```bash
-pip install "ragrails[docs]"
+pip install ragrails
 ```
 
 PDF files use `pymupdf4llm` first and fall back to `markitdown`. Other
@@ -140,6 +140,16 @@ RagRails().parse(
     frontmatter=True,
 )
 ```
+
+### `parse()` Parameters
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `files` | `str \| list[str \| dict] \| None` | `None` | Conditional | Specific files to parse. Use this when you do not pass `folder`. |
+| `folder` | `str \| None` | `None` | Conditional | Folder containing supported documents. Use this when you do not pass `files`. |
+| `input_dir` | `str` | `"files/input"` | No | Base folder used to resolve names in `files`. Ignored when `folder` is used. |
+| `output_dir` | `str` | `"files/output/docs"` | No | Folder where markdown files are written. |
+| `frontmatter` | `bool` | `True` | No | Adds document metadata to the top of each markdown file. |
 
 ## Result
 

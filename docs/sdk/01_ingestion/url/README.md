@@ -8,17 +8,19 @@ Use `RagRails().scrape()` to scrape web pages into markdown files.
 pip install "ragrails[url]"
 ```
 
-`crawl4ai` pulls in Playwright as a package dependency. You may still need to
-install browser binaries:
+Run this only when you need URL ingestion. The base `ragrails` install already
+includes document and API ingestion, but URL crawling needs `crawl4ai`, which is
+kept separate because it pulls in browser automation dependencies.
 
-```bash
-playwright install
-```
+`crawl4ai` pulls in Playwright as a package dependency, but Playwright browser
+binaries are downloaded separately. Run URL setup once in the same Python
+environment that will run scraping:
 
 ```python
 from ragrails import RagRails
 
 rag = RagRails()
+rag.setup_url()
 
 result = rag.scrape(
     url="https://example.com/about",
@@ -30,6 +32,18 @@ print(result.pages)
 print(result.files)
 print(result.errors)
 ```
+
+If you prefer the direct Playwright command:
+
+```bash
+python -m playwright install chromium
+```
+
+### `setup_url()` Parameters
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `browser` | `str` | `"chromium"` | No | Playwright browser binary to install for URL scraping. |
 
 ## Scrape Exact URLs
 
@@ -92,11 +106,23 @@ RagRails().scrape(
     mode="each",
     output_dir="files/output/web_crawled",
     frontmatter=True,
-    dlq_path="files/output/dlq.json",
+    dlq_path=None,  # defaults to "<output_dir>/dlq.json"
     max_depth=3,
     max_pages=200,
 )
 ```
+
+### `scrape()` Parameters
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `url` | `str \| list[str]` | - | Yes | One URL or a list of URLs to scrape. Must be absolute `http` or `https` URLs. |
+| `mode` | `"each" \| "full"` | `"each"` | No | `each` scrapes only the supplied URLs. `full` crawls each URL's site. |
+| `output_dir` | `str` | `"files/output/web_crawled"` | No | Folder where markdown files are written. |
+| `frontmatter` | `bool` | `True` | No | Adds source metadata to the top of each markdown file. |
+| `dlq_path` | `str \| None` | `None` | No | Custom dead-letter queue file. If omitted, uses `<output_dir>/dlq.json`. |
+| `max_depth` | `int` | `3` | No | Maximum crawl depth for `mode="full"`. |
+| `max_pages` | `int` | `200` | No | Maximum pages to crawl per site for `mode="full"`. |
 
 ## Result
 
@@ -148,3 +174,52 @@ if result.failed:
 ```
 
 The dead-letter queue path is available as `result.dlq_path`.
+By default it is written to `dlq.json` inside the selected `output_dir`.
+You can also pass `dlq_path` to write failures to a custom file.
+
+## Retry Failed URLs
+
+Use `retry_scrape()` to retry URLs saved in the dead-letter queue.
+
+```python
+from ragrails import RagRails
+
+rag = RagRails()
+
+result = rag.retry_scrape(
+    "files/output/web_crawled/dlq.json",
+)
+
+print(result.pages)
+print(result.failed)
+print(result.dlq_path)
+print(result.errors)
+```
+
+### `retry_scrape()` Parameters
+
+| Parameter | Type | Default | Required | Description |
+|---|---|---:|---|---|
+| `dlq_path` | `str` | - | Yes | Path to the DLQ file to retry, for example `files/output/web_crawled/dlq.json`. |
+| `mode` | `"each" \| "full"` | `"each"` | No | Retry URLs as exact pages or full-site crawls. |
+| `max_depth` | `int` | `3` | No | Maximum crawl depth for `mode="full"`. |
+| `max_pages` | `int` | `200` | No | Maximum pages to crawl per site for `mode="full"`. |
+| `max_attempts` | `int` | `3` | No | Only retry DLQ entries with fewer than this many attempts. |
+
+`retry_scrape()` infers the retry output directory from the DLQ path's folder.
+For example, `files/output/web_crawled/dlq.json` retries into
+`files/output/web_crawled`.
+
+If you want to retry a different DLQ file, pass that path explicitly:
+
+```python
+scrape_result = RagRails().scrape(
+    url="https://example.com",
+    output_dir="files/output/web_crawled",
+    dlq_path="files/output/custom/dlq.json",
+)
+
+result = RagRails().retry_scrape(
+    "files/output/custom/dlq.json",
+)
+```
