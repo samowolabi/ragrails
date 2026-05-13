@@ -146,6 +146,24 @@ result = RagRails().fetch(
 print(result.files)
 ```
 
+## CLI
+
+Ragrails ships with a CLI so you can run ingestion without writing Python.
+
+```bash
+ragrails setup-url
+ragrails scrape https://example.com --mode full
+ragrails scrape https://example.com/about https://example.com/pricing
+ragrails parse --folder files/input
+ragrails parse --files guide.pdf --files pricing.csv --input-dir files/input
+ragrails fetch https://api.example.com/v1/products --title "Products"
+ragrails fetch https://api.example.com/v1/products \
+  --header "Authorization:Bearer <token>" \
+  --header "X-Api-Key:my-key"
+```
+
+See the full [CLI reference](docs/sdk/cli/README.md).
+
 ## SDK Stages
 
 | Stage | Method | Output |
@@ -164,6 +182,7 @@ Hosted documentation:
 
 Repository docs:
 
+- [CLI](docs/sdk/cli/README.md)
 - [Ingestion](docs/sdk/01_ingestion/README.md)
 - [URL ingestion](docs/sdk/01_ingestion/url/README.md)
 - [Document ingestion](docs/sdk/01_ingestion/documents/README.md)
