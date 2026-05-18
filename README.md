@@ -40,6 +40,7 @@ for heavier stages or providers.
 |---|---|
 | URL ingestion | `pip install "ragrails[url]"` |
 | Chunking | `pip install "ragrails[chunk]"` |
+| REST API server | `pip install "ragrails[server]"` |
 | Store in Qdrant | `pip install "ragrails[store-qdrant]"` |
 | Store in Pinecone | `pip install "ragrails[store-pinecone]"` |
 | Store in Weaviate | `pip install "ragrails[store-weaviate]"` |
@@ -93,13 +94,13 @@ chunks = rag.chunk(
     output_dir="files/output/chunks/web",
 )
 
-stored = rag.store(
+embedded = rag.embed(
     input_dir=chunks.output_dir,
     vector_db="qdrant",
     collection="rag_chunks",
 )
 
-print(stored.chunks)
+print(embedded.chunks)
 ```
 
 ### Documents to Vector DB
@@ -123,13 +124,13 @@ chunks = rag.chunk(
     output_dir="files/output/chunks/docs",
 )
 
-stored = rag.store(
+embedded = rag.embed(
     input_dir=chunks.output_dir,
     vector_db="qdrant",
     collection="rag_chunks",
 )
 
-print(stored.chunks)
+print(embedded.chunks)
 ```
 
 ### API to Markdown
@@ -148,21 +149,25 @@ print(result.files)
 
 ## CLI
 
-Ragrails ships with a CLI so you can run ingestion without writing Python.
+Ragrails ships with a CLI so you can run the pipeline without writing Python.
 
 ```bash
-ragrails setup-url
-ragrails scrape https://example.com --mode full
-ragrails scrape https://example.com/about https://example.com/pricing
-ragrails parse --folder files/input
-ragrails parse --files guide.pdf --files pricing.csv --input-dir files/input
-ragrails fetch https://api.example.com/v1/products --title "Products"
-ragrails fetch https://api.example.com/v1/products \
-  --header "Authorization:Bearer <token>" \
-  --header "X-Api-Key:my-key"
+ragrails --help
 ```
 
-See the full [CLI reference](docs/sdk/cli/README.md).
+See the [CLI docs](docs/cli/README.md) and stage-specific command docs.
+
+## REST API
+
+Ragrails also ships an optional REST API server for language-agnostic HTTP
+usage.
+
+```bash
+pip install "ragrails[server]"
+ragrails-api
+```
+
+See the [REST API docs](docs/server/README.md) and stage-specific endpoint docs.
 
 ## SDK Stages
 
@@ -174,7 +179,18 @@ See the full [CLI reference](docs/sdk/cli/README.md).
 | API ingestion | `rag.fetch(...)` | Markdown files |
 | Chunking | `rag.chunk(...)` | JSON chunk files |
 | Single-file chunk preview | `rag.chunk_file(...)` | In-memory chunk dictionaries |
-| Vector storage | `rag.store(...)` | Embedded vectors in a vector DB |
+| Embedding | `rag.embed(...)` | Embedded vectors in a vector DB |
+| Vector storage | `rag.store(...)` | Alias for embedding and storing chunks |
+| Retrieval | `rag.retrieve(...)` | Ranked retrieved chunks |
+
+The usage interfaces are organized in the package under `ragrails/usage/`:
+
+```text
+ragrails/usage/
+  sdk/
+  cli/
+  server/
+```
 
 Hosted documentation:
 
@@ -182,307 +198,46 @@ Hosted documentation:
 
 Repository docs:
 
-- [CLI](docs/sdk/cli/README.md)
-- [Ingestion](docs/sdk/01_ingestion/README.md)
-- [URL ingestion](docs/sdk/01_ingestion/url/README.md)
-- [Document ingestion](docs/sdk/01_ingestion/documents/README.md)
-- [API ingestion](docs/sdk/01_ingestion/api/README.md)
-- [Chunking](docs/sdk/02_chunking/README.md)
-- [Embedding and storage](docs/sdk/03_embedding/README.md)
-- [Retrieval](docs/sdk/04_retrieval/README.md)
+- [Docs index](docs/README.md)
 
-## Ingestion
+| Usage | Overview | Ingestion | Chunking | Embedding | Storing | Retrieval |
+|---|---|---|---|---|---|---|
+| SDK | [Overview](docs/sdk/README.md) | [Ingestion](docs/sdk/ingestion/README.md) | [Chunking](docs/sdk/chunking/README.md) | [Embedding](docs/sdk/embedding/README.md) | [Storing](docs/sdk/storing/README.md) | [Retrieval](docs/sdk/retrieval/README.md) |
+| CLI | [Overview](docs/cli/README.md) | [Ingestion](docs/cli/ingestion/README.md) | [Chunking](docs/cli/chunking/README.md) | [Embedding](docs/cli/embedding/README.md) | [Storing](docs/cli/storing/README.md) | [Retrieval](docs/cli/retrieval/README.md) |
+| REST API server | [Overview](docs/server/README.md) | [Ingestion](docs/server/ingestion/README.md) | [Chunking](docs/server/chunking/README.md) | [Embedding](docs/server/embedding/README.md) | [Storing](docs/server/storing/README.md) | [Retrieval](docs/server/retrieval/README.md) |
 
-### URL Ingestion
+Specialized SDK ingestion docs:
 
-```python
-result = RagRails().scrape(
-    url="https://example.com/about",
-    mode="each",
-    output_dir="files/output/web_crawled",
-)
-```
+- [URL ingestion](docs/sdk/ingestion/url/README.md)
+- [Document ingestion](docs/sdk/ingestion/documents/README.md)
+- [API ingestion](docs/sdk/ingestion/api/README.md)
 
-For full-site crawling:
+Detailed usage, result types, and parameter references live in the stage docs.
 
-```python
-result = RagRails().scrape(
-    url="https://example.com",
-    mode="full",
-    output_dir="files/output/web_crawled",
-    max_depth=3,
-    max_pages=200,
-)
-```
+## Release Checks
 
-Failed URL attempts are written to `dlq.json` inside the output folder by
-default:
-
-```text
-files/output/web_crawled/dlq.json
-```
-
-Retry failed URLs:
-
-```python
-result = RagRails().retry_scrape(
-    "files/output/web_crawled/dlq.json",
-)
-```
-
-### Document Ingestion
-
-```python
-result = RagRails().parse(
-    folder="files/input",
-    output_dir="files/output/docs",
-)
-```
-
-Supported folder discovery extensions:
-
-```text
-.csv, .docx, .epub, .html, .htm, .ipynb, .json, .md, .msg,
-.pdf, .pptx, .rss, .tsv, .txt, .xls, .xlsx, .xml, .zip
-```
-
-### API Ingestion
-
-```python
-result = RagRails().fetch(
-    url="https://api.example.com/v1/search",
-    method="POST",
-    headers={
-        "Authorization": "Bearer <token>",
-        "X-Api-Key": "my-key",
-    },
-    body={"query": "payments"},
-    title="Search Results",
-    output_dir="files/output/api",
-)
-```
-
-## Chunking
-
-```python
-result = RagRails().chunk(
-    input_dir="files/output/docs",
-    output_dir="files/output/chunks/docs",
-    chunk_size=2000,
-    chunk_overlap=200,
-)
-```
-
-Preview one markdown file in memory:
-
-```python
-chunks = RagRails().chunk_file(
-    "files/output/docs/guide.md",
-)
-```
-
-## Vector Storage
-
-Ragrails currently supports Qdrant, Pinecone, and Weaviate as storage providers.
-
-Set provider credentials as needed:
+Run all local release checks:
 
 ```bash
-export VOYAGE_API_KEY="..."
-export PINECONE_API_KEY="..."
-export WEAVIATE_API_KEY="..."
+scripts/test.sh
 ```
 
-Qdrant local example:
+Run individual checks:
 
 ```bash
-docker run -p 6333:6333 qdrant/qdrant
+scripts/smoke-test.sh
+scripts/test-cli.sh
 ```
 
-```python
-result = RagRails().store(
-    input_dir="files/output/chunks/docs",
-    vector_db="qdrant",
-    url="http://localhost:6333",
-    collection="rag_chunks",
-)
+Use the release wrappers so checks run automatically before build or publish:
+
+```bash
+scripts/build.sh
+scripts/publish.sh
 ```
-
-Pinecone example:
-
-```python
-result = RagRails().store(
-    input_dir="files/output/chunks/docs",
-    vector_db="pinecone",
-    collection="rag-chunks",
-)
-```
-
-Weaviate example:
-
-```python
-result = RagRails().store(
-    input_dir="files/output/chunks/docs",
-    vector_db="weaviate",
-    url="http://localhost:8080",
-    collection="RagChunks",
-)
-```
-
-Provider naming rules:
-
-| Provider | Collection name |
-|---|---|
-| Qdrant | Any valid Qdrant collection name, for example `rag_chunks` |
-| Pinecone | Lowercase letters, digits, and hyphens, for example `rag-chunks` |
-| Weaviate | Starts with an uppercase letter, for example `RagChunks` |
-
-## Result Types
-
-```python
-ScrapeResult(
-    pages=int,
-    failed=int,
-    output_dir=str,
-    files=list[str],
-    dlq_path=str,
-    errors=list[str],
-)
-```
-
-```python
-ParseResult(
-    documents=int,
-    failed=int,
-    output_dir=str,
-    files=list[str],
-    errors=list[str],
-)
-```
-
-```python
-ApiIngestResult(
-    pages=int,
-    items=int,
-    failed=int,
-    output_dir=str,
-    files=list[str],
-    errors=list[str],
-)
-```
-
-```python
-ChunkResult(
-    files=int,
-    chunks=int,
-    output_dir=str,
-    output_files=list[str],
-    failed=int,
-    errors=list[str],
-)
-```
-
-```python
-StoreResult(
-    files=int,
-    chunks=int,
-    input_dir=str,
-    provider=str,
-    collection=str,
-    errors=list[str],
-)
-```
-
-## Parameter Reference
-
-### `setup_url()`
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `browser` | `str` | `"chromium"` | No | Playwright browser binary to install for URL scraping. |
-
-### `scrape()`
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `url` | `str \| list[str]` | - | Yes | URL or URLs to scrape. |
-| `mode` | `"each" \| "full"` | `"each"` | No | Scrape exact URLs or crawl full sites. |
-| `output_dir` | `str` | `"files/output/web_crawled"` | No | Markdown output folder. |
-| `frontmatter` | `bool` | `True` | No | Add source metadata to markdown files. |
-| `dlq_path` | `str \| None` | `None` | No | Custom DLQ file. Defaults to `<output_dir>/dlq.json`. |
-| `max_depth` | `int` | `3` | No | Crawl depth for `mode="full"`. |
-| `max_pages` | `int` | `200` | No | Maximum pages per site. |
-
-### `retry_scrape()`
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `dlq_path` | `str` | - | Yes | DLQ file to retry. |
-| `mode` | `"each" \| "full"` | `"each"` | No | Retry as exact pages or full-site crawls. |
-| `max_depth` | `int` | `3` | No | Crawl depth for `mode="full"`. |
-| `max_pages` | `int` | `200` | No | Maximum pages per site. |
-| `max_attempts` | `int` | `3` | No | Retry entries below this attempt count. |
-
-### `parse()`
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `files` | `str \| list[str \| dict] \| None` | `None` | Conditional | Specific files to parse. |
-| `folder` | `str \| None` | `None` | Conditional | Folder of supported files to parse. |
-| `input_dir` | `str` | `"files/input"` | No | Base folder for `files`. |
-| `output_dir` | `str` | `"files/output/docs"` | No | Markdown output folder. |
-| `frontmatter` | `bool` | `True` | No | Add document metadata to markdown files. |
-
-### `fetch()`
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `url` | `str` | - | Yes | API endpoint URL. |
-| `title` | `str` | `"API Response"` | No | Output metadata title. |
-| `description` | `str` | `""` | No | Output metadata description. |
-| `method` | `str` | `"GET"` | No | HTTP method. |
-| `headers` | `dict \| None` | `None` | No | Request headers. Multiple headers are supported. |
-| `params` | `dict \| None` | `None` | No | Query parameters. |
-| `body` | `dict \| None` | `None` | No | JSON request body. |
-| `pagination` | `dict \| None` | `None` | No | Pagination configuration. |
-| `max_pages` | `int` | `100` | No | Maximum API pages to fetch. |
-| `output_dir` | `str` | `"files/output/api"` | No | Markdown output folder. |
-| `frontmatter` | `bool` | `True` | No | Add API metadata to markdown files. |
-
-### `chunk()`
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `input_dir` | `str` | `"files/output/web_crawled"` | No | Folder containing markdown files. |
-| `output_dir` | `str` | `"files/output/chunks"` | No | JSON chunk output folder. |
-| `chunk_size` | `int` | `2000` | No | Target maximum chunk size. |
-| `chunk_overlap` | `int` | `200` | No | Overlap between chunks. |
-| `min_chunk_length` | `int` | `100` | No | Minimum chunk length to keep. |
-
-### `chunk_file()`
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `path` | `str` | - | Yes | Markdown file path to chunk in memory. |
-| `chunk_size` | `int` | `2000` | No | Target maximum chunk size. |
-| `chunk_overlap` | `int` | `200` | No | Overlap between chunks. |
-| `min_chunk_length` | `int` | `100` | No | Minimum chunk length to keep. |
-
-### `store()`
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `input_dir` | `str` | `"files/output/chunks"` | No | Folder of chunk JSON files. |
-| `vector_db` | `"qdrant" \| "pinecone" \| "weaviate"` | `"qdrant"` | No | Vector database provider. |
-| `collection` | `str \| None` | `None` | No | Collection, index, or class name. |
-| `url` | `str \| None` | `None` | No | Vector database URL. |
-| `files` | `str \| list[str] \| None` | `None` | No | Selected chunk files to store. |
-| `batch_size` | `int` | `64` | No | Chunks per embedding/storage batch. |
-| `embedder` | `str` | `"voyage"` | No | Embedding provider. |
-| `model` | `str` | `"voyage-3"` | No | Embedding model name. |
 
 ## Status
 
-The public SDK currently covers ingestion, chunking, and vector storage.
-Retrieval, chat, and eval exist internally and will be exposed as public SDK
-surfaces next.
+The public SDK currently covers ingestion, chunking, embedding, vector storage,
+and retrieval. Chat and eval exist internally and will be exposed as public SDK
+surfaces later.

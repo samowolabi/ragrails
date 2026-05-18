@@ -1,6 +1,16 @@
 """Public Python SDK for Ragrails."""
 
-from .sdk import RagRails
-from .types import ApiIngestResult, ChunkResult, ParseResult, ScrapeResult, StoreResult
+from .usage.sdk import RagRails
+from .types import ApiIngestResult, ChunkResult, EmbedResult, ParseResult, RetrievedChunk, RetrieveResult, ScrapeResult, StoreResult
 
-__all__ = ["ApiIngestResult", "ChunkResult", "ParseResult", "RagRails", "ScrapeResult", "StoreResult"]
+__all__ = [
+    "ApiIngestResult",
+    "ChunkResult",
+    "EmbedResult",
+    "ParseResult",
+    "RagRails",
+    "RetrievedChunk",
+    "RetrieveResult",
+    "ScrapeResult",
+    "StoreResult",
+]

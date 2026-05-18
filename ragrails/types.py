@@ -62,3 +62,34 @@ class StoreResult:
     provider: str
     collection: str
     errors: list[str]
+
+
+@dataclass(frozen=True)
+class EmbedResult:
+    """Summary returned by `RagRails().embed(...)`."""
+
+    files: int
+    chunks: int
+    input_dir: str
+    provider: str
+    collection: str
+    errors: list[str]
+
+
+@dataclass(frozen=True)
+class RetrievedChunk:
+    """One retrieved chunk returned by `RagRails().retrieve(...)`."""
+
+    id: str
+    score: float
+    text: str
+    metadata: dict
+    rerank_score: float | None = None
+
+
+@dataclass(frozen=True)
+class RetrieveResult:
+    """Summary returned by `RagRails().retrieve(...)`."""
+
+    query: str
+    results: list[RetrievedChunk]
