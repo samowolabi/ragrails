@@ -6,3 +6,4 @@ cd "$ROOT"
 
 scripts/smoke-test.sh
 scripts/test-cli.sh
+scripts/check-changelog.sh

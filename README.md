@@ -227,6 +227,13 @@ Run individual checks:
 ```bash
 scripts/smoke-test.sh
 scripts/test-cli.sh
+scripts/check-changelog.sh
+```
+
+Install the git hook to run checks automatically before every `git push`:
+
+```bash
+scripts/install-git-hooks.sh
 ```
 
 Use the release wrappers so checks run automatically before build or publish:
