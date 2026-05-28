@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 UV="${UV:-uv}"
-RUN=("$UV" run --locked --extra server --extra chunk)
+RUN=("$UV" run --locked)
 
 section() {
   printf "\n==> %s\n" "$1"
@@ -48,7 +48,6 @@ expected_methods = [
     "parse",
     "fetch",
     "chunk",
-    "chunk_file",
     "embed",
     "store",
     "retrieve",
@@ -77,14 +76,13 @@ section "Compile package modules"
 
 section "CLI entrypoint and command help"
 "${RUN[@]}" ragrails --help >/dev/null
-for command in setup-url scrape parse fetch chunk chunk-file embed store retrieve; do
+for command in setup-url scrape parse fetch chunk embed store retrieve; do
   "${RUN[@]}" ragrails "$command" --help >/dev/null
 done
 printf "CLI help commands OK\n"
 
 section "Chunking pipeline with local markdown"
-mkdir -p "$TMP_DIR/input" "$TMP_DIR/chunks"
-cat > "$TMP_DIR/input/guide.md" <<'MD'
+cat > "$TMP_DIR/guide.md" <<'MD'
 ---
 title: Smoke Guide
 path: https://example.com/smoke-guide
@@ -102,21 +100,17 @@ does not need network access, API keys, browser setup, or a vector database.
 MD
 
 "${RUN[@]}" ragrails chunk \
-  --input-dir "$TMP_DIR/input" \
-  --output-dir "$TMP_DIR/chunks" \
+  --markdown "$(cat "$TMP_DIR/guide.md")" \
   --chunk-size 400 \
   --chunk-overlap 40 \
-  --min-chunk-length 20 >/dev/null
+  --min-chunk-length 20 > "$TMP_DIR/chunks.json"
 
-"${RUN[@]}" python - "$TMP_DIR/chunks/guide.json" <<'PY'
+"${RUN[@]}" python - "$TMP_DIR/chunks.json" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-if not path.exists():
-    raise AssertionError(f"Expected chunk output not found: {path}")
-
 chunks = json.loads(path.read_text())
 if not chunks:
     raise AssertionError("Expected at least one chunk")
@@ -136,7 +130,7 @@ section "REST API app, routes, and validation"
 "${RUN[@]}" python - <<'PY'
 from fastapi.testclient import TestClient
 
-from ragrails.usage.server.app import create_app
+from ragrails.interfaces.server.app import create_app
 
 app = create_app()
 schema = app.openapi()
@@ -162,7 +156,7 @@ health = client.get("/v1/health")
 if health.status_code != 200:
     raise AssertionError(f"Health endpoint failed: {health.status_code} {health.text}")
 
-invalid_chunk = client.post("/v1/chunk", json={"input_dir": "/path/that/does/not/exist"})
+invalid_chunk = client.post("/v1/chunk", json={"markdown": ""})
 if invalid_chunk.status_code < 400:
     raise AssertionError(f"Expected invalid chunk request to fail, got {invalid_chunk.status_code}")
 

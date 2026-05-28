@@ -1,11 +1,7 @@
 import os
 from dataclasses import dataclass, field
 
-from dotenv import load_dotenv
-
 from .base import Reranker
-
-load_dotenv()
 
 
 @dataclass

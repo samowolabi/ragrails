@@ -3921,10 +3921,13 @@ version = "0.1.10"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
+    { name = "fastapi" },
     { name = "httpx" },
+    { name = "langchain-text-splitters" },
     { name = "markitdown", extra = ["docx", "pdf"] },
     { name = "pymupdf4llm" },
     { name = "python-dotenv" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -3948,9 +3951,6 @@ all = [
 anthropic = [
     { name = "anthropic" },
 ]
-chunk = [
-    { name = "langchain-text-splitters" },
-]
 openai = [
     { name = "openai" },
 ]
@@ -3963,10 +3963,6 @@ qdrant = [
 rerank = [
     { name = "flagembedding" },
     { name = "sentence-transformers" },
-]
-server = [
-    { name = "fastapi" },
-    { name = "uvicorn" },
 ]
 store-pinecone = [
     { name = "langchain-text-splitters" },
@@ -4000,14 +3996,14 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.0" },
     { name = "crawl4ai", marker = "extra == 'all'", specifier = ">=0.8.6" },
     { name = "crawl4ai", marker = "extra == 'url'", specifier = ">=0.8.6" },
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "fastapi", marker = "extra == 'all'", specifier = ">=0.115" },
-    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.115" },
     { name = "flagembedding", marker = "extra == 'all'", specifier = ">=1.4.0" },
     { name = "flagembedding", marker = "extra == 'rerank'", specifier = ">=1.4.0" },
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "httpx", marker = "extra == 'all'", specifier = ">=0.27.2" },
+    { name = "langchain-text-splitters", specifier = ">=1.1.2" },
     { name = "langchain-text-splitters", marker = "extra == 'all'", specifier = ">=1.1.2" },
-    { name = "langchain-text-splitters", marker = "extra == 'chunk'", specifier = ">=1.1.2" },
     { name = "langchain-text-splitters", marker = "extra == 'store-pinecone'", specifier = ">=1.1.2" },
     { name = "langchain-text-splitters", marker = "extra == 'store-qdrant'", specifier = ">=1.1.2" },
     { name = "langchain-text-splitters", marker = "extra == 'store-weaviate'", specifier = ">=1.1.2" },
@@ -4026,8 +4022,8 @@ requires-dist = [
     { name = "qdrant-client", marker = "extra == 'store-qdrant'", specifier = ">=1.17.1" },
     { name = "sentence-transformers", marker = "extra == 'all'", specifier = ">=5.4.1" },
     { name = "sentence-transformers", marker = "extra == 'rerank'", specifier = ">=5.4.1" },
+    { name = "uvicorn", specifier = ">=0.34" },
     { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.34" },
-    { name = "uvicorn", marker = "extra == 'server'", specifier = ">=0.34" },
     { name = "voyageai", marker = "extra == 'all'", specifier = ">=0.3.7" },
     { name = "voyageai", marker = "extra == 'store-pinecone'", specifier = ">=0.3.7" },
     { name = "voyageai", marker = "extra == 'store-qdrant'", specifier = ">=0.3.7" },
@@ -4037,7 +4033,7 @@ requires-dist = [
     { name = "weaviate-client", marker = "extra == 'store-weaviate'", specifier = ">=4.20.5" },
     { name = "weaviate-client", marker = "extra == 'weaviate'", specifier = ">=4.20.5" },
 ]
-provides-extras = ["url", "chunk", "voyage", "qdrant", "pinecone", "weaviate", "openai", "anthropic", "rerank", "server", "store-qdrant", "store-pinecone", "store-weaviate", "all"]
+provides-extras = ["url", "voyage", "qdrant", "pinecone", "weaviate", "openai", "anthropic", "rerank", "store-qdrant", "store-pinecone", "store-weaviate", "all"]
 
 [[package]]
 name = "rank-bm25"

@@ -43,18 +43,18 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.1.0",
+    "fastapi>=0.115",
     "httpx>=0.27.2",
+    "langchain-text-splitters>=1.1.2",
     "markitdown[docx,pdf]>=0.1.5",
     "pymupdf4llm>=1.27.2.3",
     "python-dotenv>=1.2.2",
+    "uvicorn>=0.34",
 ]
 
 [project.optional-dependencies]
 url = [
     "crawl4ai>=0.8.6",
-]
-chunk = [
-    "langchain-text-splitters>=1.1.2",
 ]
 voyage = [
     "voyageai>=0.3.7",
@@ -77,10 +77,6 @@ anthropic = [
 rerank = [
     "flagembedding>=1.4.0",
     "sentence-transformers>=5.4.1",
-]
-server = [
-    "fastapi>=0.115",
-    "uvicorn>=0.34",
 ]
 store-qdrant = [
     "langchain-text-splitters>=1.1.2",
@@ -116,8 +112,8 @@ all = [
 ]
 
 [project.scripts]
-ragrails = "ragrails.usage.cli.main:cli"
-ragrails-api = "ragrails.usage.server.app:main"
+ragrails = "ragrails.interfaces.cli.main:cli"
+ragrails-api = "ragrails.interfaces.server.app:main"
 
 [project.urls]
 Homepage = "https://github.com/samowolabi/ragrails"

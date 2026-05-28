@@ -33,14 +33,16 @@ or via your package manager before running the install command.
 pip install ragrails
 ```
 
-Document and API ingestion are included in the base install. Install extras only
-for heavier stages or providers.
+Chunking, the CLI, REST API server, document ingestion, and API
+ingestion are included in the base install. Install extras only for URL
+scraping and provider integrations.
+
+Extras are optional because they install provider SDKs, browser/crawler
+dependencies, or heavier runtime packages that not every project needs.
 
 | Need | Install |
 |---|---|
 | URL ingestion | `pip install "ragrails[url]"` |
-| Chunking | `pip install "ragrails[chunk]"` |
-| REST API server | `pip install "ragrails[server]"` |
 | Store in Qdrant | `pip install "ragrails[store-qdrant]"` |
 | Store in Pinecone | `pip install "ragrails[store-pinecone]"` |
 | Store in Weaviate | `pip install "ragrails[store-weaviate]"` |
@@ -86,21 +88,15 @@ rag = RagRails()
 scraped = rag.scrape(
     url="https://example.com",
     mode="full",
-    output_dir="files/output/web_crawled",
 )
 
 chunks = rag.chunk(
-    input_dir=scraped.output_dir,
-    output_dir="files/output/chunks/web",
+    markdown=[
+        {"markdown": "# Example\n\nScraped markdown content", "source": "https://example.com"}
+    ],
 )
 
-embedded = rag.embed(
-    input_dir=chunks.output_dir,
-    vector_db="qdrant",
-    collection="rag_chunks",
-)
-
-print(embedded.chunks)
+print(chunks.items)
 ```
 
 ### Documents to Vector DB
@@ -116,21 +112,15 @@ rag = RagRails()
 
 parsed = rag.parse(
     folder="files/input",
-    output_dir="files/output/docs",
 )
 
 chunks = rag.chunk(
-    input_dir=parsed.output_dir,
-    output_dir="files/output/chunks/docs",
+    markdown=[
+        {"markdown": "# Guide\n\nParsed markdown content", "source": "guide.pdf"}
+    ],
 )
 
-embedded = rag.embed(
-    input_dir=chunks.output_dir,
-    vector_db="qdrant",
-    collection="rag_chunks",
-)
-
-print(embedded.chunks)
+print(chunks.items)
 ```
 
 ### API to Markdown
@@ -141,10 +131,9 @@ from ragrails import RagRails
 result = RagRails().fetch(
     url="https://api.example.com/v1/products",
     title="Products",
-    output_dir="files/output/api",
 )
 
-print(result.files)
+print(result.outputs[0]["text"])
 ```
 
 ## CLI
@@ -159,34 +148,46 @@ See the [CLI docs](docs/cli/README.md) and stage-specific command docs.
 
 ## REST API
 
-Ragrails also ships an optional REST API server for language-agnostic HTTP
-usage.
+Ragrails also ships a REST API server for language-agnostic HTTP usage.
 
 ```bash
-pip install "ragrails[server]"
 ragrails-api
 ```
 
 See the [REST API docs](docs/server/README.md) and stage-specific endpoint docs.
+Swagger UI is available at `http://127.0.0.1:8000/docs` when the server is
+running. The OpenAPI schema is available at `/v1/openapi.json`.
+
+## Notebooks
+
+The repository includes Jupyter notebooks for interactive SDK workflows:
+
+| Notebook | Stage |
+|---|---|
+| `notebooks/01_ingestion.ipynb` | Ingestion |
+| `notebooks/02_chunking.ipynb` | Chunking |
+| `notebooks/03_embedding.ipynb` | Embedding |
+| `notebooks/03_store.ipynb` | Storing |
+| `notebooks/04_retrieval.ipynb` | Retrieval |
 
 ## SDK Stages
 
 | Stage | Method | Output |
 |---|---|---|
-| URL ingestion | `rag.scrape(...)` | Markdown files |
-| URL retry | `rag.retry_scrape(...)` | Retried markdown files |
-| Document ingestion | `rag.parse(...)` | Markdown files |
-| API ingestion | `rag.fetch(...)` | Markdown files |
-| Chunking | `rag.chunk(...)` | JSON chunk files |
+| URL ingestion | `rag.scrape(...)` | In-memory markdown outputs |
+| URL retry | `rag.scrape(dlq=...)` | Retried in-memory markdown outputs |
+| Document ingestion | `rag.parse(...)` | In-memory markdown outputs |
+| API ingestion | `rag.fetch(...)` | In-memory markdown outputs |
+| Chunking | `rag.chunk(...)` | In-memory chunk dictionaries |
 | Single-file chunk preview | `rag.chunk_file(...)` | In-memory chunk dictionaries |
 | Embedding | `rag.embed(...)` | Embedded vectors in a vector DB |
 | Vector storage | `rag.store(...)` | Alias for embedding and storing chunks |
 | Retrieval | `rag.retrieve(...)` | Ranked retrieved chunks |
 
-The usage interfaces are organized in the package under `ragrails/usage/`:
+The usage interfaces are organized in the package under `ragrails/interfaces/`:
 
 ```text
-ragrails/usage/
+ragrails/interfaces/
   sdk/
   cli/
   server/

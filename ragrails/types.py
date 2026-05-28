@@ -2,7 +2,33 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+@dataclass
+class DLQ:
+    """Dead-letter queue for retryable scrape failures.
+
+    Pass to ``scrape()`` to track or retry failed URLs.
+
+    Example::
+
+        # Track failures in response
+        result = rag.scrape("https://example.com/docs", dlq=DLQ())
+        result.dlq.items   # list of retry input dicts
+
+        # Save failures to file
+        result = rag.scrape("https://example.com/docs", dlq=DLQ("files/dlq/web.json"))
+
+        # Retry from previous result
+        result = rag.scrape(dlq=result.dlq)
+
+        # Retry from file path
+        result = rag.scrape(dlq="files/dlq/web.json")
+    """
+
+    path: str | None = None
+    items: list[dict] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -11,10 +37,9 @@ class ScrapeResult:
 
     pages: int
     failed: int
-    output_dir: str
-    files: list[str]
-    dlq_path: str
-    errors: list[str]
+    outputs: list[dict]
+    errors: list[dict]
+    dlq: DLQ | None = None
 
 
 @dataclass(frozen=True)
@@ -23,31 +48,27 @@ class ParseResult:
 
     documents: int
     failed: int
-    output_dir: str
-    files: list[str]
-    errors: list[str]
+    outputs: list[dict]
+    errors: list[dict]
 
 
 @dataclass(frozen=True)
 class ApiIngestResult:
     """Summary returned by `RagRails().fetch(...)`."""
 
-    pages: int
-    items: int
+    documents: int
     failed: int
-    output_dir: str
-    files: list[str]
-    errors: list[str]
+    outputs: list[dict]
+    errors: list[dict]
 
 
 @dataclass(frozen=True)
 class ChunkResult:
     """Summary returned by `RagRails().chunk(...)`."""
 
-    files: int
+    inputs: int
     chunks: int
-    output_dir: str
-    output_files: list[str]
+    items: list[dict]
     failed: int
     errors: list[str]
 
@@ -56,24 +77,24 @@ class ChunkResult:
 class StoreResult:
     """Summary returned by `RagRails().store(...)`."""
 
-    files: int
-    chunks: int
-    input_dir: str
+    inputs: int
+    stored: int
+    items: list[dict]
+    failed: int
     provider: str
     collection: str
-    errors: list[str]
+    errors: list[dict]
 
 
 @dataclass(frozen=True)
 class EmbedResult:
     """Summary returned by `RagRails().embed(...)`."""
 
-    files: int
-    chunks: int
-    input_dir: str
-    provider: str
-    collection: str
-    errors: list[str]
+    inputs: int
+    embedded: int
+    items: list[dict]
+    failed: int
+    errors: list[dict]
 
 
 @dataclass(frozen=True)
@@ -92,4 +113,23 @@ class RetrieveResult:
     """Summary returned by `RagRails().retrieve(...)`."""
 
     query: str
-    results: list[RetrievedChunk]
+    search_query: str
+    retrieved: int
+    items: list[RetrievedChunk]
+    failed: int
+    errors: list[dict]
+
+
+@dataclass(frozen=True)
+class ChatResult:
+    """Summary returned by `RagRails().chat(...)`."""
+
+    answer: str
+    sources: list[dict]
+    history: list[dict]
+    retrieval: dict
+    llm: dict
+    errors: list[dict]
+    retrieval_quality: dict
+    compacted: bool = False
+    intent: str = "rag"

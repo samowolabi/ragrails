@@ -2,9 +2,9 @@
 
 `retrieve()` searches a vector database for chunks relevant to a query.
 
-Retrieval uses the same vector-store registry and embedding provider as
-embedding and storage. The query embedder runs with `input_type="query"` so the
-query vector is optimized for search.
+Create the query embedder as its own object, then pass it into `retrieve()`.
+This keeps retrieval provider-agnostic and makes custom embedders work the same
+way as built-in providers.
 
 ## Install
 
@@ -35,14 +35,18 @@ export WEAVIATE_API_KEY="..."
 ```python
 from ragrails import RagRails
 
-result = RagRails().retrieve(
+rag = RagRails()
+query_embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
+
+result = rag.retrieve(
     "How do payouts work?",
+    embedder=query_embedder,
     vector_db="qdrant",
     collection="rag_chunks",
     top_k=10,
 )
 
-for item in result.results:
+for item in result.items:
     print(item.score, item.metadata.get("title"), item.text[:200])
 ```
 
@@ -51,12 +55,18 @@ for item in result.results:
 Use reranking to rescore the retrieved candidates with a cross-encoder:
 
 ```python
-result = RagRails().retrieve(
+rag = RagRails()
+query_embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
+reranker = rag.reranker(provider="voyage", model="rerank-2-lite")
+
+result = rag.retrieve(
     "How do payouts work?",
+    embedder=query_embedder,
     vector_db="qdrant",
     collection="rag_chunks",
     top_k=20,
-    rerank=True,
+    use_rerank=True,
+    reranker=reranker,
     rerank_top_k=5,
 )
 ```
@@ -67,15 +77,18 @@ result = RagRails().retrieve(
 RagRails().retrieve(
     query,
     *,
+    embedder,
     vector_db="qdrant",
     collection=None,
     url=None,
+    options=None,
     top_k=10,
-    embedder="voyage",
-    model="voyage-3",
-    rerank=False,
-    reranker="voyage",
-    reranker_model="rerank-2-lite",
+    use_query_rewrite=False,
+    rewrite_llm=None,
+    rewrite_context="",
+    session_context="",
+    use_rerank=False,
+    reranker=None,
     rerank_top_k=5,
 )
 ```
@@ -85,15 +98,18 @@ RagRails().retrieve(
 | Parameter | Type | Default | Required | Description |
 |---|---|---:|---|---|
 | `query` | `str` | - | Yes | Query text to search for. |
+| `embedder` | embedding model object | - | Yes | Query embedder object, usually from `rag.embedder(..., input_type="query")`. |
 | `vector_db` | `"qdrant" \| "pinecone" \| "weaviate"` | `"qdrant"` | No | Vector database provider to search. |
 | `collection` | `str \| None` | `None` | No | Collection, index, or class name. Provider defaults apply when omitted. |
 | `url` | `str \| None` | `None` | No | Vector database URL. Useful for local Qdrant or Weaviate. |
+| `options` | `dict \| None` | `None` | No | Extra options forwarded to the vector store provider. |
 | `top_k` | `int` | `10` | No | Number of vector search candidates to return. |
-| `embedder` | `str` | `"voyage"` | No | Query embedding provider. |
-| `model` | `str` | `"voyage-3"` | No | Query embedding model. |
-| `rerank` | `bool` | `False` | No | Rerank retrieved candidates. |
-| `reranker` | `str` | `"voyage"` | No | Reranker provider. |
-| `reranker_model` | `str` | `"rerank-2-lite"` | No | Reranker model. |
+| `use_query_rewrite` | `bool` | `False` | No | Rewrite the query with an LLM before vector search. |
+| `rewrite_llm` | LLM object | `None` | Required when query rewrite is enabled | LLM object used for query rewrite. |
+| `rewrite_context` | `str` | `""` | No | Domain context passed to query rewrite. |
+| `session_context` | `str` | `""` | No | Conversation context passed to query rewrite. |
+| `use_rerank` | `bool` | `False` | No | Rerank retrieved candidates. |
+| `reranker` | reranker object | `None` | Required when rerank is enabled | Reranker object, usually from `rag.reranker(...)`. |
 | `rerank_top_k` | `int` | `5` | No | Number of reranked results to return. |
 
 ## Result
@@ -101,7 +117,9 @@ RagRails().retrieve(
 ```python
 RetrieveResult(
     query=str,
-    results=[
+    search_query=str,
+    retrieved=int,
+    items=[
         RetrievedChunk(
             id=str,
             score=float,
@@ -110,6 +128,8 @@ RetrieveResult(
             rerank_score=float | None,
         )
     ],
+    failed=int,
+    errors=list[dict],
 )
 ```
 
@@ -118,5 +138,5 @@ RetrieveResult(
 The lower-level stage runner still works:
 
 ```bash
-uv run python -m ragrails.pipeline.stg_04_retriever "How do payouts work?"
+uv run python -m ragrails.core.stg_05_retriever "How do payouts work?"
 ```

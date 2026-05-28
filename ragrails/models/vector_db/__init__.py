@@ -1,6 +1,6 @@
 from .base import Point, SearchResult, VectorStore
 from .config import VectorStoreConfig, create_store
-from .registry import create_vector_store, list_vector_stores
+from .registry import create_vector_store, list_vector_stores, register_vector_store
 from .types import VectorStoreInfo
 
 __all__ = [
@@ -15,6 +15,7 @@ __all__ = [
     "create_store",
     "create_vector_store",
     "list_vector_stores",
+    "register_vector_store",
 ]
 
 

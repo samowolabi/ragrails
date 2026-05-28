@@ -1,42 +1,35 @@
 # CLI Chunking
 
-Chunking commands split markdown files into chunk JSON files.
+Chunking prints JSON chunks to stdout from markdown text input.
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `ragrails chunk` | Split a folder of markdown files into chunk JSON files |
-| `ragrails chunk-file` | Preview chunks for one markdown file |
+| `ragrails chunk` | Split markdown text into JSON chunks |
 
 ## chunk
 
 ```bash
-ragrails chunk --input-dir files/output/api --output-dir files/output/chunks/api
+ragrails chunk \
+  --markdown "# Guide\n\nUse Ragrails to build a retrieval pipeline."
 ```
 
-Options:
-
-| Option | Default | Description |
-|---|---|---|
-| `--input-dir` | `files/output/web_crawled` | Folder containing markdown files |
-| `--output-dir` | `files/output/chunks` | Folder where chunk JSON files are written |
-| `--chunk-size` | `2000` | Target maximum chunk size |
-| `--chunk-overlap` | `200` | Overlap between chunks |
-| `--min-chunk-length` | `100` | Minimum chunk length to keep |
-
-## chunk-file
-
-Preview chunks for one markdown file without writing the full folder output:
+Repeat `--markdown` to chunk multiple documents:
 
 ```bash
-ragrails chunk-file files/output/docs/guide.md
+ragrails chunk \
+  --markdown "# Auth\n\nUse a bearer token." \
+  --markdown "# Billing\n\nInvoices are generated monthly."
 ```
 
 Options:
 
 | Option | Default | Description |
 |---|---|---|
+| `--markdown` | - | Markdown text to chunk. Repeat for multiple documents |
+| `--title` | `""` | Title metadata for markdown input |
+| `--source` | `""` | Source metadata for markdown input |
 | `--chunk-size` | `2000` | Target maximum chunk size |
 | `--chunk-overlap` | `200` | Overlap between chunks |
 | `--min-chunk-length` | `100` | Minimum chunk length to keep |

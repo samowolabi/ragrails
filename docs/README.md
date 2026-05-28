@@ -9,4 +9,4 @@ pipeline stage shape.
 | CLI | [CLI](cli/README.md) | [Ingestion](cli/ingestion/README.md) | [Chunking](cli/chunking/README.md) | [Embedding](cli/embedding/README.md) | [Storing](cli/storing/README.md) | [Retrieval](cli/retrieval/README.md) |
 | REST API server | [Server](server/README.md) | [Ingestion](server/ingestion/README.md) | [Chunking](server/chunking/README.md) | [Embedding](server/embedding/README.md) | [Storing](server/storing/README.md) | [Retrieval](server/retrieval/README.md) |
 
-The implementation for each usage surface lives under `ragrails/usage/`.
+The implementation for each usage surface lives under `ragrails/interfaces/`.

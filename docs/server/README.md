@@ -3,13 +3,7 @@
 The Ragrails REST API gives non-Python clients a language-agnostic HTTP
 interface over the same pipeline used by the SDK and CLI.
 
-## Install
-
-```bash
-pip install "ragrails[server]"
-```
-
-Run the server:
+## Run
 
 ```bash
 ragrails-api
@@ -21,12 +15,14 @@ The API listens on `http://127.0.0.1:8000` by default.
 ragrails-api --host 0.0.0.0 --port 8080
 ```
 
-OpenAPI docs are available at:
+Swagger UI and OpenAPI docs are available at:
 
 ```text
 http://127.0.0.1:8000/docs
 http://127.0.0.1:8000/v1/openapi.json
 ```
+
+Use Swagger UI at `/docs` to inspect schemas and try endpoints from the browser.
 
 ## Stage Docs
 
@@ -47,7 +43,7 @@ GET /v1/health
 ## Implementation Layout
 
 ```text
-ragrails/usage/server/
+ragrails/interfaces/server/
   ingestion/
   chunking/
   embedding/

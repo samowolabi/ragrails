@@ -6,7 +6,7 @@ cd "$ROOT"
 
 UV="${UV:-uv}"
 
-"$UV" run --locked --extra chunk python -m unittest discover \
+"$UV" run --locked python -m unittest discover \
   -s tests/cli \
   -p "test_*.py" \
   -v

@@ -279,13 +279,13 @@ EmbedResult(
 The lower-level stage runner still works:
 
 ```bash
-uv run python -m ragrails.pipeline.stg_03_embedder --input-dir files/output/chunks/docs
+uv run python -m ragrails.core.stg_03_embedder --input-dir files/output/chunks/docs
 ```
 
 Embed one file from a folder:
 
 ```bash
-uv run python -m ragrails.pipeline.stg_03_embedder file 001_overview.json --input-dir files/output/chunks/docs
+uv run python -m ragrails.core.stg_03_embedder file 001_overview.json --input-dir files/output/chunks/docs
 ```
 
 ## What Gets Stored

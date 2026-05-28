@@ -20,7 +20,7 @@ ragrails --help
 | Stage | Commands | Docs |
 |---|---|---|
 | Ingestion | `setup-url`, `scrape`, `parse`, `fetch` | [Ingestion](ingestion/README.md) |
-| Chunking | `chunk`, `chunk-file` | [Chunking](chunking/README.md) |
+| Chunking | `chunk` | [Chunking](chunking/README.md) |
 | Embedding | `embed` | [Embedding](embedding/README.md) |
 | Storing | `store` | [Storing](storing/README.md) |
 | Retrieval | `retrieve` | [Retrieval](retrieval/README.md) |

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
@@ -17,8 +15,8 @@ from ragrails.types import (
     ScrapeResult,
     StoreResult,
 )
-from ragrails.usage.cli.main import cli
-from ragrails.usage.sdk import RagRails
+from ragrails.interfaces.cli.main import cli
+from ragrails.interfaces.sdk import RagRails
 
 
 class CliIntegrationTests(unittest.TestCase):
@@ -38,7 +36,6 @@ class CliIntegrationTests(unittest.TestCase):
             "parse",
             "fetch",
             "chunk",
-            "chunk-file",
             "embed",
             "store",
             "retrieve",
@@ -49,9 +46,7 @@ class CliIntegrationTests(unittest.TestCase):
         expected = ScrapeResult(
             pages=2,
             failed=0,
-            output_dir="out/web",
-            files=["out/web/a.md", "out/web/b.md"],
-            dlq_path="out/web/dlq.json",
+            outputs=[],
             errors=[],
         )
 
@@ -62,8 +57,6 @@ class CliIntegrationTests(unittest.TestCase):
                 "https://example.com/b",
                 "--mode",
                 "full",
-                "--output-dir",
-                "out/web",
                 "--max-depth",
                 "2",
                 "--max-pages",
@@ -75,7 +68,6 @@ class CliIntegrationTests(unittest.TestCase):
         scrape.assert_called_once_with(
             url=["https://example.com/a", "https://example.com/b"],
             mode="full",
-            output_dir="out/web",
             frontmatter=False,
             max_depth=2,
             max_pages=10,
@@ -98,8 +90,7 @@ class CliIntegrationTests(unittest.TestCase):
         expected = ParseResult(
             documents=2,
             failed=0,
-            output_dir="out/docs",
-            files=["out/docs/guide.md", "out/docs/pricing.md"],
+            outputs=[],
             errors=[],
         )
 
@@ -110,10 +101,6 @@ class CliIntegrationTests(unittest.TestCase):
                 "guide.pdf",
                 "--files",
                 "pricing.csv",
-                "--input-dir",
-                "files/input",
-                "--output-dir",
-                "out/docs",
                 "--no-frontmatter",
             ])
 
@@ -121,19 +108,15 @@ class CliIntegrationTests(unittest.TestCase):
         parse.assert_called_once_with(
             files=["guide.pdf", "pricing.csv"],
             folder=None,
-            input_dir="files/input",
-            output_dir="out/docs",
             frontmatter=False,
         )
         self.assertIn("Documents parsed : 2", result.output)
 
     def test_fetch_parses_headers_params_and_method(self) -> None:
         expected = ApiIngestResult(
-            pages=1,
-            items=3,
+            documents=1,
             failed=0,
-            output_dir="out/api",
-            files=["out/api/products.md"],
+            outputs=[],
             errors=[],
         )
 
@@ -151,8 +134,6 @@ class CliIntegrationTests(unittest.TestCase):
                 "Authorization:Bearer token",
                 "--param",
                 "limit:100",
-                "--output-dir",
-                "out/api",
                 "--max-pages",
                 "5",
                 "--no-frontmatter",
@@ -167,10 +148,9 @@ class CliIntegrationTests(unittest.TestCase):
             headers={"Authorization": "Bearer token"},
             params={"limit": "100"},
             max_pages=5,
-            output_dir="out/api",
             frontmatter=False,
         )
-        self.assertIn("Items fetched : 3", result.output)
+        self.assertIn("Documents fetched : 1", result.output)
 
     def test_fetch_rejects_bad_header_pair(self) -> None:
         result = self.invoke([
@@ -183,62 +163,39 @@ class CliIntegrationTests(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Expected KEY:VALUE", result.output)
 
-    def test_chunk_command_writes_json_for_local_markdown(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            input_dir = root / "input"
-            output_dir = root / "chunks"
-            input_dir.mkdir()
-            markdown = input_dir / "guide.md"
-            markdown.write_text(
-                "\n".join([
-                    "---",
-                    "title: CLI Test Guide",
-                    "path: https://example.com/cli-test",
-                    "---",
-                    "",
-                    "# CLI Test Guide",
-                    "",
-                    "This file verifies that the CLI chunk command can read markdown",
-                    "from disk and write chunk JSON output through the public command.",
-                    "",
-                    "## Details",
-                    "",
-                    "The content is deterministic and local.",
-                ]),
-                encoding="utf-8",
-            )
+    def test_chunk_command_prints_json_for_markdown_array(self) -> None:
+        markdown = "\n".join([
+            "---",
+            "title: CLI Test Guide",
+            "path: https://example.com/cli-test",
+            "---",
+            "",
+            "# CLI Test Guide",
+            "",
+            "This command verifies that the CLI chunk command accepts markdown",
+            "text and prints chunk JSON output without reading or writing files.",
+        ])
 
-            result = self.invoke([
-                "chunk",
-                "--input-dir",
-                str(input_dir),
-                "--output-dir",
-                str(output_dir),
-                "--chunk-size",
-                "400",
-                "--chunk-overlap",
-                "40",
-                "--min-chunk-length",
-                "20",
-            ])
+        result = self.invoke([
+            "chunk",
+            "--markdown",
+            markdown,
+            "--title",
+            "CLI Test Guide",
+            "--source",
+            "https://example.com/cli-test",
+            "--chunk-size",
+            "400",
+            "--chunk-overlap",
+            "40",
+            "--min-chunk-length",
+            "20",
+        ])
 
-            self.assertEqual(result.exit_code, 0, result.output)
-            chunk_file = output_dir / "guide.json"
-            self.assertTrue(chunk_file.exists(), result.output)
-            chunks = json.loads(chunk_file.read_text(encoding="utf-8"))
-            self.assertGreaterEqual(len(chunks), 1)
-            self.assertEqual(chunks[0]["metadata"]["title"], "CLI Test Guide")
-
-    def test_chunk_file_rejects_non_markdown_file(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "guide.txt"
-            path.write_text("not markdown", encoding="utf-8")
-
-            result = self.invoke(["chunk-file", str(path)])
-
-        self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Chunk input file must be markdown", result.output)
+        self.assertEqual(result.exit_code, 0, result.output)
+        chunks = json.loads(result.output)
+        self.assertGreaterEqual(len(chunks), 1)
+        self.assertEqual(chunks[0]["metadata"]["title"], "CLI Test Guide")
 
     def test_embed_passes_storage_options_to_sdk(self) -> None:
         expected = EmbedResult(

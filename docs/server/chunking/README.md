@@ -1,6 +1,6 @@
 # REST API Chunking
 
-Chunking splits markdown files into chunk JSON files.
+Chunking accepts markdown text and returns JSON chunks in the response.
 
 ## Endpoint
 
@@ -14,15 +14,24 @@ POST /v1/chunk
 curl -X POST http://127.0.0.1:8000/v1/chunk \
   -H "Content-Type: application/json" \
   -d '{
-    "input_dir": "files/output/api",
-    "output_dir": "files/output/chunks/api"
+    "markdown": [
+      {
+        "markdown": "# Auth\n\nUse a bearer token.",
+        "title": "Auth",
+        "source": "https://docs.example.com/auth"
+      },
+      {
+        "markdown": "# Billing\n\nInvoices are generated monthly.",
+        "title": "Billing",
+        "source": "https://docs.example.com/billing"
+      }
+    ]
   }'
 ```
 
-Chunking requires the chunk extra:
+## Response
 
-```bash
-pip install "ragrails[server,chunk]"
-```
+The response includes `items`, an array of chunk dictionaries with `text`,
+`embed_text`, and `metadata`.
 
 Back to the [REST API overview](../README.md).

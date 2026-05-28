@@ -1,170 +1,91 @@
-# Ingestion
+# SDK Ingestion
 
-Ragrails ingestion turns external content into clean markdown.
+SDK ingestion turns URLs, documents, and REST API responses into structured
+markdown outputs.
 
-Current ingestion SDK methods:
+By default, ingestion returns data in memory. It does not write files and does
+not add frontmatter unless you explicitly ask for those SDK conveniences.
 
-- [URL ingestion](url/README.md): `RagRails().scrape(...)`
-- [Document ingestion](documents/README.md): `RagRails().parse(...)`
-- [API ingestion](api/README.md): `RagRails().fetch(...)`
+## Methods
 
-For language-agnostic HTTP usage, see the [REST API server](../../server/README.md).
+| Source | Method | Details |
+|---|---|---|
+| URLs | `rag.scrape(...)` | [URL ingestion](url/README.md) |
+| Documents | `rag.parse(...)` | [Document ingestion](documents/README.md) |
+| REST APIs | `rag.fetch(...)` | [API ingestion](api/README.md) |
 
-## Contract
+## Output Contract
 
-Every ingestion method writes markdown files and, by default, frontmatter
-metadata. This is the contract consumed by chunking.
+Every ingestion method returns a result object with:
 
-Ingestion is responsible for:
+```python
+result.outputs  # list of output dictionaries
+result.errors   # list of structured error dictionaries
+result.failed   # failed item count
+```
 
-- validating source inputs
-- fetching, reading, or parsing source content
-- normalizing source content into markdown
-- attaching source metadata such as title, path, description, and original type
-- writing markdown files to `output_dir`
-- recording failed items and errors
+Each output contains:
+
+```python
+{
+    "id": "...",
+    "display_id": "...",
+    "source": "...",
+    "title": "...",
+    "text": "# Markdown content",
+    "metadata": {...},
+}
+```
+
+## Optional File Output
+
+File writing is opt-in:
+
+```python
+result = rag.parse(
+    files="docs/report.pdf",
+    output_dest="file",
+    output_dir="files/output/docs",
+)
+
+print(result.outputs[0]["output_path"])
+```
+
+Use this only when you want the SDK to persist outputs for you. Core ingestion
+still returns in-memory data; file output belongs to the SDK interface.
+
+## Optional Frontmatter
+
+Frontmatter is also opt-in and only affects markdown output:
+
+```python
+result = rag.scrape(
+    "https://example.com/docs",
+    frontmatter=True,
+)
+```
+
+When `output_format="json"`, frontmatter is ignored because metadata is already
+available as structured fields.
 
 ## Install
 
-Document and API ingestion are included with the base install:
+Document and API ingestion are included in the base install:
 
 ```bash
 pip install ragrails
 ```
 
-URL ingestion uses a separate install because browser-backed crawling pulls in
-heavier crawler dependencies.
+URL ingestion uses browser-backed crawling and needs the URL extra:
 
-After installing URL ingestion, run URL setup once in the same Python
-environment:
+```bash
+pip install "ragrails[url]"
+```
+
+Then install the Playwright browser once in the same Python environment:
 
 ```python
 from ragrails import RagRails
 
 RagRails().setup_url()
 ```
-
-This also works in Jupyter because it uses the active kernel's Python
-executable.
-
-## URL Ingestion
-
-Use URL ingestion when your source content is a web page or website.
-
-Install:
-
-```bash
-pip install "ragrails[url]"
-```
-
-Run this because URL ingestion needs it to load web pages, execute browser-backed crawling, and convert the page content into markdown.
-
-```python
-from ragrails import RagRails
-
-rag = RagRails()
-rag.setup_url()
-
-result = rag.scrape(
-    url="https://example.com",
-    mode="full",
-    output_dir="files/output/web_crawled",
-)
-```
-
-Retry failed URLs from the scrape DLQ:
-
-```python
-result = rag.retry_scrape(
-    "files/output/web_crawled/dlq.json",
-)
-```
-
-### URL Parameters
-
-| Method | Parameter | Type | Default | Required | Description |
-|---|---|---|---:|---|---|
-| `setup_url()` | `browser` | `str` | `"chromium"` | No | Playwright browser binary to install for URL scraping. |
-| `scrape()` | `url` | `str \| list[str]` | - | Yes | URL or URLs to scrape. |
-| `scrape()` | `mode` | `"each" \| "full"` | `"each"` | No | Scrape exact URLs or crawl full sites. |
-| `scrape()` | `output_dir` | `str` | `"files/output/web_crawled"` | No | Markdown output folder. |
-| `scrape()` | `frontmatter` | `bool` | `True` | No | Add source metadata to markdown files. |
-| `scrape()` | `dlq_path` | `str \| None` | `None` | No | Custom DLQ file. Defaults to `<output_dir>/dlq.json`. |
-| `scrape()` | `max_depth` | `int` | `3` | No | Crawl depth for `mode="full"`. |
-| `scrape()` | `max_pages` | `int` | `200` | No | Maximum pages per site. |
-| `retry_scrape()` | `dlq_path` | `str` | - | Yes | DLQ file to retry. |
-| `retry_scrape()` | `mode` | `"each" \| "full"` | `"each"` | No | Retry exact pages or full-site crawls. |
-| `retry_scrape()` | `max_depth` | `int` | `3` | No | Crawl depth for `mode="full"`. |
-| `retry_scrape()` | `max_pages` | `int` | `200` | No | Maximum pages per site. |
-| `retry_scrape()` | `max_attempts` | `int` | `3` | No | Retry entries below this attempt count. |
-
-## Document Ingestion
-
-Use document ingestion when your source content is a local PDF, DOCX, CSV, XLSX,
-or similar file.
-
-Install:
-
-```bash
-pip install ragrails
-```
-
-No extra is required. Document ingestion ships with the base install.
-
-```python
-from ragrails import RagRails
-
-result = RagRails().parse(
-    files=["guide.pdf", "pricing.csv"],
-    input_dir="files/input",
-    output_dir="files/output/docs",
-)
-```
-
-### Document Parameters
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `files` | `str \| list[str \| dict] \| None` | `None` | Conditional | Specific files to parse. |
-| `folder` | `str \| None` | `None` | Conditional | Folder of supported documents to parse. |
-| `input_dir` | `str` | `"files/input"` | No | Base folder for `files`. |
-| `output_dir` | `str` | `"files/output/docs"` | No | Markdown output folder. |
-| `frontmatter` | `bool` | `True` | No | Add document metadata to markdown files. |
-
-## API Ingestion
-
-Use API ingestion when your source content is a REST API response.
-
-Install:
-
-```bash
-pip install ragrails
-```
-
-No extra is required. API ingestion ships with the base install.
-
-```python
-from ragrails import RagRails
-
-result = RagRails().fetch(
-    url="https://api.example.com/v1/products",
-    title="Products",
-    output_dir="files/output/api",
-)
-```
-
-### API Parameters
-
-| Parameter | Type | Default | Required | Description |
-|---|---|---:|---|---|
-| `url` | `str` | - | Yes | API endpoint URL. |
-| `title` | `str` | `"API Response"` | No | Output metadata title. |
-| `description` | `str` | `""` | No | Output metadata description. |
-| `method` | `str` | `"GET"` | No | HTTP method. |
-| `headers` | `dict \| None` | `None` | No | Request headers. |
-| `params` | `dict \| None` | `None` | No | Query parameters. |
-| `body` | `dict \| None` | `None` | No | JSON request body. |
-| `pagination` | `dict \| None` | `None` | No | Pagination configuration. |
-| `max_pages` | `int` | `100` | No | Maximum API pages to fetch. |
-| `output_dir` | `str` | `"files/output/api"` | No | Markdown output folder. |
-| `frontmatter` | `bool` | `True` | No | Add API metadata to markdown files. |
