@@ -53,6 +53,9 @@ class FakeStore(VectorStore):
     def upsert(self, points: list[Point]) -> None:
         return None
 
+    def delete(self, ids: list[str]) -> None:
+        return None
+
     def search(self, vector: list[float], top_k: int = 5) -> list[SearchResult]:
         self.searches.append({"vector": vector, "top_k": top_k})
         return [

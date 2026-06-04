@@ -27,6 +27,9 @@ class FakeStore(VectorStore):
             raise RuntimeError("upsert unavailable")
         self.batches.append(points)
 
+    def delete(self, ids: list[str]) -> None:
+        return None
+
     def search(self, vector: list[float], top_k: int = 5) -> list[SearchResult]:
         return []
 

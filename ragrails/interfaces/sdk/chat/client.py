@@ -68,7 +68,7 @@ class ChatMixin:
         )
 
         try:
-            from ragrails.core.stg_06_chat import ChatConfig, run_chat
+            from ragrails.core.stg_06_chat import ChatConfig, QueryRewriteConfig as CoreQueryRewriteConfig, run_chat
             from ragrails.core.stg_05_retriever import RetrieverConfig
             from ragrails.core.stg_06_chat.quality import RetrievalQualityConfig
             from ragrails.models.vector_db.registry import create_vector_store
@@ -85,7 +85,6 @@ class ChatMixin:
                 embedder=embedder,
                 store=store,
                 reranker=reranker,
-                rewrite_llm=query_rewrite.llm,
                 chat_config=ChatConfig(
                     persona=persona,
                     use_intent_routing=intent_routing.enabled,
@@ -96,9 +95,13 @@ class ChatMixin:
                         max_context_chunks=retrieval_quality.max_context_chunks,
                     ),
                 ),
-                retrieval_config=retrieval_config or RetrieverConfig(use_query_rewrite=query_rewrite.enabled),
-                rewrite_context=persona,
-                session_context=query_rewrite.session_context,
+                retrieval_config=retrieval_config or RetrieverConfig(),
+                query_rewrite=CoreQueryRewriteConfig(
+                    enabled=query_rewrite.enabled,
+                    llm=query_rewrite.llm,
+                    context=persona,
+                    session_context=query_rewrite.session_context,
+                ),
                 history=list(history or []),
             )
         except ImportError as exc:

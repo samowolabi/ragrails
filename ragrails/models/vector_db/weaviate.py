@@ -135,6 +135,14 @@ class WeaviateStore(VectorStore):
             else:
                 collection.data.insert(uuid=object_id, properties=properties, vector=point.vector)
 
+    def delete(self, ids: list[str]) -> None:
+        """Delete objects from Weaviate by exact Ragrails point IDs."""
+        if not ids:
+            return
+        collection = self._get_client().collections.get(self.collection)
+        for point_id in ids:
+            collection.data.delete_by_id(self._uuid_for(point_id))
+
     def search(self, vector: list[float], top_k: int = 5) -> list[SearchResult]:
         """Return top-k nearest neighbours from a Weaviate near-vector query.
 

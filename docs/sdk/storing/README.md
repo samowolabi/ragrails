@@ -1,33 +1,55 @@
 # Storing
 
-`store()` is the storage-oriented SDK method for persisting embedded chunk
-vectors into the configured retrieval index.
-
-It accepts the same parameters as `embed()` and returns `StoreResult`.
+`store()` persists embedded chunks in a vector database. `edit()` and `delete()`
+manage already-stored chunks by exact chunk ID.
 
 ```python
 from ragrails import RagRails
 
-result = RagRails().store(
-    input_dir="files/output/chunks/docs",
+rag = RagRails()
+
+parsed = rag.parse(files=["docs/report.pdf"])
+chunks = rag.chunk(markdown=parsed.outputs)
+embedder = rag.embedder(provider="voyage", model="voyage-3")
+embedded = rag.embed(chunks=chunks.items, embedder=embedder)
+
+stored = rag.store(
+    embedded_chunks=embedded.items,
     vector_db="qdrant",
     collection="rag_chunks",
+    url="http://localhost:6333",
 )
-
-print(result.files)
-print(result.chunks)
-print(result.provider)
-print(result.collection)
-print(result.errors)
 ```
 
-Storing is responsible for:
+Edit a stored chunk:
 
-- ensuring the collection or index exists
-- validating provider-specific collection names
-- upserting by stable chunk ID
-- preserving chunk payload metadata
-- batching writes through the configured provider
+```python
+edited = rag.edit(
+    chunks=[
+        {
+            "id": "chunk-id",
+            "text": "Updated text",
+            "source": "docs/report.pdf",
+            "metadata": {"title": "Report"},
+        }
+    ],
+    embedder=embedder,
+    vector_db="qdrant",
+    collection="rag_chunks",
+    url="http://localhost:6333",
+)
+```
 
-See [Embedding](../embedding/README.md) for provider setup and shared
-parameters.
+Delete stored chunks:
+
+```python
+deleted = rag.delete(
+    ids=["chunk-id"],
+    vector_db="qdrant",
+    collection="rag_chunks",
+    url="http://localhost:6333",
+)
+```
+
+Lifecycle operations are chunk-level only. Document-level delete and metadata
+filter delete are not part of this stage yet.

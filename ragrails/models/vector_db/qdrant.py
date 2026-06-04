@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, PointIdsList, PointStruct, VectorParams
 
 from .base import Point, SearchResult, VectorStore
 
@@ -51,6 +51,15 @@ class QdrantStore(VectorStore):
             for p in points
         ]
         client.upsert(collection_name=self.collection, points=qdrant_points)
+
+    def delete(self, ids: list[str]) -> None:
+        """Delete points from the Qdrant collection by exact point IDs."""
+        if not ids:
+            return
+        self._get_client().delete(
+            collection_name=self.collection,
+            points_selector=PointIdsList(points=ids),
+        )
 
     def search(self, vector: list[float], top_k: int = 5) -> list[SearchResult]:
         """Return top-k nearest neighbours for the given query vector.

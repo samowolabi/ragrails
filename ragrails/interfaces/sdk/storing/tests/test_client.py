@@ -14,6 +14,13 @@ class FakeStore:
     collection = "docs"
 
 
+class FakeEmbedder:
+    vector_size = 2
+
+    def encode(self, texts: list[str]) -> list[list[float]]:
+        return [[1.0, 2.0] for _ in texts]
+
+
 def _embedded_chunk() -> dict:
     return {
         "id": "chunk-1",
@@ -68,6 +75,78 @@ class StoringSDKTests(unittest.TestCase):
         self.assertEqual(result.collection, "docs")
         self.assertEqual(result.errors, [])
 
+    def test_edit_returns_in_memory_result(self) -> None:
+        chunks = [{"id": "chunk-1", "text": "Updated", "source": "guide.md"}]
+        stats = {
+            "edited": 1,
+            "failed": 0,
+            "outputs": [{"id": "chunk-1", "source": "guide.md"}],
+            "errors": [],
+        }
+        embedder = FakeEmbedder()
+
+        with (
+            patch("ragrails.models.vector_db.registry.create_vector_store", return_value=FakeStore()) as create_store,
+            patch("ragrails.core.stg_04_storing.lifecycle.edit_stored_chunks", return_value=stats) as edit_chunks,
+        ):
+            result = SDK().edit(
+                chunks=chunks,
+                embedder=embedder,
+                vector_db="qdrant",
+                collection="docs",
+                url="http://localhost:6333",
+                batch_size=16,
+                options={"api_key": "test"},
+            )
+
+        create_store.assert_called_once_with(
+            provider="qdrant",
+            url="http://localhost:6333",
+            collection="docs",
+            api_key="test",
+        )
+        edit_chunks.assert_called_once_with(chunks=chunks, embedder=embedder, store=create_store.return_value, batch_size=16)
+        self.assertEqual(result.requested, 1)
+        self.assertEqual(result.edited, 1)
+        self.assertEqual(result.items, stats["outputs"])
+        self.assertEqual(result.failed, 0)
+        self.assertEqual(result.provider, "qdrant")
+        self.assertEqual(result.collection, "docs")
+
+    def test_delete_returns_in_memory_result(self) -> None:
+        stats = {
+            "deleted": 2,
+            "failed": 0,
+            "outputs": [{"id": "chunk-1"}, {"id": "chunk-2"}],
+            "errors": [],
+        }
+
+        with (
+            patch("ragrails.models.vector_db.registry.create_vector_store", return_value=FakeStore()) as create_store,
+            patch("ragrails.core.stg_04_storing.lifecycle.delete_stored_chunks", return_value=stats) as delete_chunks,
+        ):
+            result = SDK().delete(
+                ids=["chunk-1", "chunk-2"],
+                vector_db="qdrant",
+                collection="docs",
+                url="http://localhost:6333",
+                options={"api_key": "test"},
+            )
+
+        create_store.assert_called_once_with(
+            provider="qdrant",
+            url="http://localhost:6333",
+            collection="docs",
+            api_key="test",
+        )
+        delete_chunks.assert_called_once_with(ids=["chunk-1", "chunk-2"], store=create_store.return_value)
+        self.assertEqual(result.requested, 2)
+        self.assertEqual(result.deleted, 2)
+        self.assertEqual(result.items, stats["outputs"])
+        self.assertEqual(result.failed, 0)
+        self.assertEqual(result.provider, "qdrant")
+        self.assertEqual(result.collection, "docs")
+
     def test_store_preserves_core_errors(self) -> None:
         error = {"source": "guide.md", "stage": "upsert", "error": "failed"}
         stats = {"stored": 0, "failed": 1, "outputs": [], "errors": [error]}
@@ -118,6 +197,29 @@ class StoringSDKTests(unittest.TestCase):
     def test_store_rejects_non_dict_options(self) -> None:
         with self.assertRaisesRegex(TypeError, "options must be a dictionary"):
             SDK().store(embedded_chunks=[_embedded_chunk()], options=["bad"])
+
+    def test_edit_validates_inputs(self) -> None:
+        with self.assertRaisesRegex(TypeError, "chunks must be a list"):
+            SDK().edit(chunks={"id": "bad"}, embedder=FakeEmbedder())
+
+        with self.assertRaisesRegex(ValueError, "chunks must include at least one"):
+            SDK().edit(chunks=[], embedder=FakeEmbedder())
+
+        with self.assertRaisesRegex(TypeError, "embedder must be an embedding model object"):
+            SDK().edit(chunks=[{"id": "a", "text": "Alpha"}], embedder=object())
+
+        with self.assertRaisesRegex(ValueError, "batch_size must be greater than 0"):
+            SDK().edit(chunks=[{"id": "a", "text": "Alpha"}], embedder=FakeEmbedder(), batch_size=0)
+
+    def test_delete_validates_inputs(self) -> None:
+        with self.assertRaisesRegex(TypeError, "ids must be a list"):
+            SDK().delete(ids="chunk-1")
+
+        with self.assertRaisesRegex(ValueError, "ids must include at least one"):
+            SDK().delete(ids=[])
+
+        with self.assertRaisesRegex(TypeError, "options must be a dictionary"):
+            SDK().delete(ids=["chunk-1"], options=["bad"])
 
     def test_store_validates_provider_collection_rules(self) -> None:
         with self.assertRaisesRegex(ValueError, "Pinecone"):

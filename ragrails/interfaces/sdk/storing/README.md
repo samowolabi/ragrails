@@ -42,6 +42,36 @@ rag.store(
 )
 ```
 
+Edit stored chunks by exact chunk ID:
+
+```python
+result = rag.edit(
+    chunks=[
+        {
+            "id": "chunk-id",
+            "text": "Updated chunk text",
+            "source": "docs/report.pdf",
+            "metadata": {"title": "Report"},
+        }
+    ],
+    embedder=embedder,
+    vector_db="qdrant",
+    collection="docs",
+    url="http://localhost:6333",
+)
+```
+
+Delete stored chunks by exact chunk ID:
+
+```python
+result = rag.delete(
+    ids=["chunk-id"],
+    vector_db="qdrant",
+    collection="docs",
+    url="http://localhost:6333",
+)
+```
+
 ## Result Shape
 
 ```python
@@ -57,3 +87,7 @@ StoreResult(
     errors=[],
 )
 ```
+
+`edit()` returns `EditResult`; `delete()` returns `DeleteResult`. Both include
+requested count, success count, items, failed count, provider, collection, and
+errors.

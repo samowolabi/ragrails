@@ -189,10 +189,11 @@ class SDKChatTests(unittest.TestCase):
             )
 
         call = run_chat.call_args.kwargs
-        self.assertTrue(call["retrieval_config"].use_query_rewrite)
-        self.assertIs(call["rewrite_llm"], rewrite_llm)
-        self.assertEqual(call["rewrite_context"], "Product knowledge base")
-        self.assertEqual(call["session_context"], "Auth flow")
+        self.assertFalse(call["retrieval_config"].use_query_rewrite)
+        self.assertTrue(call["query_rewrite"].enabled)
+        self.assertIs(call["query_rewrite"].llm, rewrite_llm)
+        self.assertEqual(call["query_rewrite"].context, "Product knowledge base")
+        self.assertEqual(call["query_rewrite"].session_context, "Auth flow")
         self.assertFalse(call["chat_config"].use_intent_routing)
         self.assertEqual(call["chat_config"].retrieval_quality.min_retrieval_score, 0.7)
         self.assertEqual(call["chat_config"].retrieval_quality.min_rerank_score, 0.8)

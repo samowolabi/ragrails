@@ -106,6 +106,15 @@ class PineconeStore(VectorStore):
             kwargs["namespace"] = self.namespace
         self._get_index().upsert(**kwargs)
 
+    def delete(self, ids: list[str]) -> None:
+        """Delete vectors from the Pinecone index by exact vector IDs."""
+        if not ids:
+            return
+        kwargs = {"ids": ids}
+        if self.namespace:
+            kwargs["namespace"] = self.namespace
+        self._get_index().delete(**kwargs)
+
     def search(self, vector: list[float], top_k: int = 5) -> list[SearchResult]:
         """Return top-k nearest neighbours from a Pinecone dense-vector query.
 

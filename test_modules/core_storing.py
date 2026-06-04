@@ -17,6 +17,9 @@ class DemoStore(VectorStore):
     def upsert(self, points: list[Point]) -> None:
         print(f"upsert(points={len(points)})")
 
+    def delete(self, ids: list[str]) -> None:
+        print(f"delete(ids={len(ids)})")
+
     def search(self, vector: list[float], top_k: int = 5) -> list[SearchResult]:
         return []
 

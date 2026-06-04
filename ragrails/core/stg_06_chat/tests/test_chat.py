@@ -7,7 +7,7 @@ from ragrails.models.llm.base import LLMProvider, LLMResponse, LLMToolResponse
 from ragrails.models.reranker.base import Reranker
 from ragrails.models.vector_db.base import Point, SearchResult, VectorStore
 from ragrails.core.stg_05_retriever import RetrieverConfig
-from ragrails.core.stg_06_chat import ChatConfig, run_chat
+from ragrails.core.stg_06_chat import ChatConfig, QueryRewriteConfig, run_chat
 from ragrails.core.stg_06_chat.context import build_context, extract_sources, select_context, validate_citations
 from ragrails.core.stg_06_chat.quality import (
     ASK_CLARIFYING_QUESTION,
@@ -34,6 +34,9 @@ class FakeStore(VectorStore):
         return None
 
     def upsert(self, points: list[Point]) -> None:
+        return None
+
+    def delete(self, ids: list[str]) -> None:
         return None
 
     def search(self, vector: list[float], top_k: int = 5) -> list[SearchResult]:
@@ -83,9 +86,19 @@ class FakeLLM(LLMProvider):
         return LLMToolResponse(text=self.text)
 
 
+class RewriteLLM(FakeLLM):
+    def __init__(self, text: str = "expanded auth query") -> None:
+        super().__init__(text)
+
+
 class FailingLLM(FakeLLM):
     def complete(self, system: str, user: str, history=None, temperature=None) -> LLMResponse:
         raise RuntimeError("llm unavailable")
+
+
+class FailingRewriteLLM(FakeLLM):
+    def complete(self, system: str, user: str, history=None, temperature=None) -> LLMResponse:
+        raise RuntimeError("rewrite unavailable")
 
 
 class ChatCoreTests(unittest.TestCase):
@@ -175,6 +188,86 @@ class ChatCoreTests(unittest.TestCase):
         self.assertEqual(result["answer"], "I need more detail.")
         self.assertEqual(result["sources"], [])
         self.assertEqual(llm.calls[0]["user"], "Hello")
+
+    def test_run_chat_uses_separate_rewrite_llm_when_provided(self) -> None:
+        answer_llm = FakeLLM("Use Bearer auth [C1].")
+        rewrite_llm = RewriteLLM("expanded auth query")
+
+        result = run_chat(
+            query="How do I do it?",
+            llm=answer_llm,
+            embedder=FakeEmbedder(),
+            store=FakeStore(),
+            chat_config=ChatConfig(persona="Product docs"),
+            retrieval_config=RetrieverConfig(top_k=1),
+            query_rewrite=QueryRewriteConfig(
+                enabled=True,
+                llm=rewrite_llm,
+                session_context="User is asking about authentication.",
+            ),
+        )
+
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["retrieval"]["query"], "How do I do it?")
+        self.assertEqual(result["retrieval"]["search_query"], "expanded auth query")
+        self.assertIn("Product docs", rewrite_llm.calls[0]["user"])
+        self.assertIn("User is asking about authentication.", rewrite_llm.calls[0]["user"])
+        self.assertIn("Context:", answer_llm.calls[0]["user"])
+        self.assertEqual(result["history"][-2], {"role": "user", "content": "How do I do it?"})
+
+    def test_run_chat_falls_back_to_chat_llm_for_query_rewrite(self) -> None:
+        llm = FakeLLM("expanded auth query")
+
+        result = run_chat(
+            query="How do I do it?",
+            llm=llm,
+            embedder=FakeEmbedder(),
+            store=FakeStore(),
+            retrieval_config=RetrieverConfig(top_k=1),
+            query_rewrite=QueryRewriteConfig(enabled=True),
+        )
+
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["retrieval"]["search_query"], "expanded auth query")
+        self.assertEqual(len(llm.calls), 2)
+        self.assertIn("Current query: How do I do it?", llm.calls[0]["user"])
+        self.assertIn("Context:", llm.calls[1]["user"])
+
+    def test_run_chat_skips_query_rewrite_when_disabled(self) -> None:
+        answer_llm = FakeLLM("Use Bearer auth [C1].")
+        rewrite_llm = RewriteLLM("expanded auth query")
+
+        result = run_chat(
+            query="How do I do it?",
+            llm=answer_llm,
+            embedder=FakeEmbedder(),
+            store=FakeStore(),
+            retrieval_config=RetrieverConfig(top_k=1),
+            query_rewrite=QueryRewriteConfig(enabled=False, llm=rewrite_llm),
+        )
+
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["retrieval"]["query"], "How do I do it?")
+        self.assertEqual(result["retrieval"]["search_query"], "How do I do it?")
+        self.assertEqual(rewrite_llm.calls, [])
+        self.assertEqual(len(answer_llm.calls), 1)
+        self.assertIn("Context:", answer_llm.calls[0]["user"])
+
+    def test_run_chat_returns_rewrite_errors_and_search_query(self) -> None:
+        result = run_chat(
+            query="How do I do it?",
+            llm=FakeLLM(),
+            embedder=FakeEmbedder(),
+            store=FakeStore(),
+            retrieval_config=RetrieverConfig(top_k=1),
+            query_rewrite=QueryRewriteConfig(enabled=True, llm=FailingRewriteLLM()),
+        )
+
+        self.assertEqual(result["answer"], "")
+        self.assertEqual(result["errors"][0]["stage"], "rewrite")
+        self.assertEqual(result["errors"][0]["error"], "rewrite unavailable")
+        self.assertEqual(result["retrieval"]["query"], "How do I do it?")
+        self.assertEqual(result["retrieval"]["search_query"], "How do I do it?")
 
     def test_run_chat_limits_context_from_config(self) -> None:
         llm = FakeLLM("Use auth [C1].")
@@ -331,6 +424,57 @@ class ChatCoreTests(unittest.TestCase):
 
         self.assertEqual(result["answer"], "")
         self.assertEqual(result["errors"][0]["error"], "query must be a non-empty string")
+
+    def test_run_chat_validates_history_is_a_list(self) -> None:
+        result = run_chat(
+            query="How do I authenticate?",
+            llm=FakeLLM(),
+            embedder=FakeEmbedder(),
+            store=FakeStore(),
+            history="bad",
+        )
+
+        self.assertEqual(result["answer"], "")
+        self.assertEqual(result["history"], [])
+        self.assertEqual(result["errors"][0]["stage"], "validate")
+        self.assertEqual(result["errors"][0]["error"], "history must be a list of messages")
+
+    def test_run_chat_validates_history_message_shape(self) -> None:
+        cases = [
+            ([{"role": "user", "content": "Hi"}, "bad"], "history[1] must be a message dictionary"),
+            ([{"role": "tool", "content": "Hi"}], "history[0].role must be one of: assistant, system, user"),
+            ([{"role": "user", "content": None}], "history[0].content must be a string"),
+        ]
+
+        for history, error in cases:
+            with self.subTest(error=error):
+                result = run_chat(
+                    query="How do I authenticate?",
+                    llm=FakeLLM(),
+                    embedder=FakeEmbedder(),
+                    store=FakeStore(),
+                    history=history,
+                )
+
+                self.assertEqual(result["answer"], "")
+                self.assertEqual(result["errors"][0]["stage"], "validate")
+                self.assertEqual(result["errors"][0]["error"], error)
+
+    def test_run_chat_accepts_system_history_messages(self) -> None:
+        llm = FakeLLM("Use Bearer auth [C1].")
+        history = [{"role": "system", "content": "Conversation summary: user asks about auth."}]
+
+        result = run_chat(
+            query="How do I authenticate?",
+            llm=llm,
+            embedder=FakeEmbedder(),
+            store=FakeStore(),
+            history=history,
+        )
+
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(llm.calls[0]["history"], history)
+        self.assertEqual(result["history"][0], history[0])
 
 
 if __name__ == "__main__":

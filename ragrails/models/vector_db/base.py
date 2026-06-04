@@ -42,6 +42,15 @@ class VectorStore(ABC):
         ...
 
     @abstractmethod
+    def delete(self, ids: list[str]) -> None:
+        """Delete points from the collection by exact point IDs.
+
+        Example:
+            store.delete(["abc-123", "def-456"])
+        """
+        ...
+
+    @abstractmethod
     def search(self, vector: list[float], top_k: int = 5) -> list[SearchResult]:
         """Return top-k nearest neighbours for the given query vector.
 

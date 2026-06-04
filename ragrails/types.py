@@ -87,6 +87,48 @@ class StoreResult:
 
 
 @dataclass(frozen=True)
+class IngestPipelineResult:
+    """Summary returned by `RagRails().ingest(...)`."""
+
+    sources: int
+    chunks: int
+    embedded: int
+    stored: int
+    source_results: dict[str, object]
+    chunk_result: ChunkResult
+    embed_result: EmbedResult
+    store_result: StoreResult
+    failed: int
+    errors: list[dict]
+
+
+@dataclass(frozen=True)
+class EditResult:
+    """Summary returned by `RagRails().edit(...)`."""
+
+    requested: int
+    edited: int
+    items: list[dict]
+    failed: int
+    provider: str
+    collection: str
+    errors: list[dict]
+
+
+@dataclass(frozen=True)
+class DeleteResult:
+    """Summary returned by `RagRails().delete(...)`."""
+
+    requested: int
+    deleted: int
+    items: list[dict]
+    failed: int
+    provider: str
+    collection: str
+    errors: list[dict]
+
+
+@dataclass(frozen=True)
 class EmbedResult:
     """Summary returned by `RagRails().embed(...)`."""
 

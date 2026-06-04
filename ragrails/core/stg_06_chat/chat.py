@@ -6,6 +6,8 @@ write files, manage sessions, or own transport concerns.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from ragrails.models.embedder.base import EmbeddingModel
 from ragrails.models.llm.base import History, LLMProvider
 from ragrails.models.reranker.base import Reranker
@@ -13,7 +15,7 @@ from ragrails.models.vector_db.base import VectorStore
 from ragrails.core.stg_05_retriever import RetrieverConfig, run_retrieval
 
 from .confidence import build_answer_confidence
-from .config import ChatConfig
+from .config import ChatConfig, QueryRewriteConfig
 from .context import build_context, extract_sources, validate_citations
 from .intent import RAG_INTENT, detect_intent, should_bypass_retrieval
 from .prompts import build_system_prompt, build_user_prompt
@@ -33,16 +35,21 @@ def run_chat(
     embedder: EmbeddingModel,
     store: VectorStore,
     reranker: Reranker | None = None,
-    rewrite_llm: LLMProvider | None = None,
     chat_config: ChatConfig | None = None,
     retrieval_config: RetrieverConfig | None = None,
-    rewrite_context: str = "",
-    session_context: str = "",
+    query_rewrite: QueryRewriteConfig | None = None,
     history: History | None = None,
 ) -> dict:
     """Run one RAG chat turn and return structured output."""
     cfg = chat_config or ChatConfig()
+    rewrite_cfg = query_rewrite or QueryRewriteConfig()
     error = _validate_query(query)
+    if error:
+        return _response(answer="", history=history, errors=[error])
+    error = _validate_history(history)
+    if error:
+        return _response(answer="", history=[], errors=[error])
+    error = _validate_query_rewrite(rewrite_cfg)
     if error:
         return _response(answer="", history=history, errors=[error])
     quality_error = validate_quality_config(cfg.retrieval_quality)
@@ -59,15 +66,16 @@ def run_chat(
             intent=intent,
         )
 
+    retrieval_cfg = replace(retrieval_config or RetrieverConfig(), use_query_rewrite=rewrite_cfg.enabled)
     retrieval = run_retrieval(
         query=query,
         model=embedder,
         store=store,
-        rewrite_llm=rewrite_llm or llm,
+        rewrite_llm=rewrite_cfg.llm or llm,
         reranker=reranker,
-        config=retrieval_config or RetrieverConfig(),
-        rewrite_context=rewrite_context or cfg.persona,
-        session_context=session_context,
+        config=retrieval_cfg,
+        rewrite_context=rewrite_cfg.context or cfg.persona,
+        session_context=rewrite_cfg.session_context,
     )
     if retrieval["errors"]:
         return _response(answer="", history=history, retrieval=retrieval, errors=retrieval["errors"], intent=intent)
@@ -229,6 +237,39 @@ def _append_history(history: History | None, *, query: str, answer: str) -> Hist
 def _validate_query(query: str) -> dict | None:
     if not isinstance(query, str) or not query.strip():
         return _failure(stage="validate", error="query must be a non-empty string")
+    return None
+
+
+def _validate_history(history: History | None) -> dict | None:
+    if history is None:
+        return None
+    if not isinstance(history, list):
+        return _failure(stage="validate", error="history must be a list of messages")
+
+    valid_roles = {"system", "user", "assistant"}
+    for index, message in enumerate(history):
+        if not isinstance(message, dict):
+            return _failure(stage="validate", error=f"history[{index}] must be a message dictionary")
+        role = message.get("role")
+        if role not in valid_roles:
+            return _failure(stage="validate", error=f"history[{index}].role must be one of: assistant, system, user")
+        content = message.get("content")
+        if not isinstance(content, str):
+            return _failure(stage="validate", error=f"history[{index}].content must be a string")
+    return None
+
+
+def _validate_query_rewrite(config: QueryRewriteConfig) -> dict | None:
+    if not isinstance(config, QueryRewriteConfig):
+        return _failure(stage="validate", error="query_rewrite must be a QueryRewriteConfig")
+    if not isinstance(config.enabled, bool):
+        return _failure(stage="validate", error="query_rewrite.enabled must be a boolean")
+    if config.llm is not None and (not hasattr(config.llm, "complete") or not callable(config.llm.complete)):
+        return _failure(stage="validate", error="query_rewrite.llm must be an LLM object")
+    if not isinstance(config.context, str):
+        return _failure(stage="validate", error="query_rewrite.context must be a string")
+    if not isinstance(config.session_context, str):
+        return _failure(stage="validate", error="query_rewrite.session_context must be a string")
     return None
 
 
