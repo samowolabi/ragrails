@@ -5,40 +5,32 @@
 [![Downloads](https://static.pepy.tech/badge/ragrails)](https://pepy.tech/project/ragrails)
 [![License](https://img.shields.io/pypi/l/ragrails)](LICENSE)
 
-Ragrails is a modular RAG SDK for turning web pages, local documents, and REST
-API responses into retrieval-ready knowledge bases.
+Ragrails is a modular RAG toolkit for turning URLs, local documents, and REST
+API responses into retrieval-ready vector indexes.
 
-Documentation: [https://dev.ragrails.com](https://dev.ragrails.com)
+It is organized in layers:
 
-It gives you one Python interface for:
-
-- ingesting URLs, documents, and API responses into markdown
-- chunking markdown into RAG-ready JSON chunks
-- embedding and storing chunks in pluggable vector databases
-- building toward retrieval, chat, and evaluation workflows
-
-```python
-from ragrails import RagRails
-
-rag = RagRails()
+```text
+core -> SDK -> CLI -> REST API
 ```
+
+Most users should use the SDK, CLI, or REST API. The core modules are the shared
+foundation that the public interfaces build on.
 
 ## Install
 
-Ragrails requires **Python 3.10 or newer**. The macOS system Python is 3.9 and
-will not work. Install a supported version from [python.org](https://www.python.org/downloads/)
-or via your package manager before running the install command.
+Ragrails requires Python 3.10 or newer.
 
 ```bash
 pip install ragrails
 ```
 
-Chunking, the CLI, REST API server, document ingestion, and API
-ingestion are included in the base install. Install extras only for URL
-scraping and provider integrations.
+The base install includes the SDK, CLI, REST API server, document ingestion, API
+ingestion, chunking, embedding orchestration, vector storage orchestration,
+retrieval, chat orchestration, and pipeline helpers.
 
-Extras are optional because they install provider SDKs, browser/crawler
-dependencies, or heavier runtime packages that not every project needs.
+Install extras for URL scraping, model providers, reranking, and vector database
+clients:
 
 | Need | Install |
 |---|---|
@@ -46,6 +38,9 @@ dependencies, or heavier runtime packages that not every project needs.
 | Store in Qdrant | `pip install "ragrails[store-qdrant]"` |
 | Store in Pinecone | `pip install "ragrails[store-pinecone]"` |
 | Store in Weaviate | `pip install "ragrails[store-weaviate]"` |
+| REST API with Qdrant stack | `pip install "ragrails[server-qdrant]"` |
+| REST API with Pinecone stack | `pip install "ragrails[server-pinecone]"` |
+| REST API with Weaviate stack | `pip install "ragrails[server-weaviate]"` |
 | Everything | `pip install "ragrails[all]"` |
 
 Provider extras are also available separately:
@@ -60,162 +55,217 @@ Provider extras are also available separately:
 | Anthropic | `pip install "ragrails[anthropic]"` |
 | Reranking | `pip install "ragrails[rerank]"` |
 
-## Quick Start
+## SDK Quick Start
 
-### URL to Vector DB
+```python
+from ragrails import RagRails
+
+rag = RagRails()
+```
+
+### Ingest and Store
+
+Run ingestion, chunking, embedding, and vector storage in one call:
+
+```python
+from ragrails import RagRails
+
+rag = RagRails()
+
+result = rag.ingest(
+    markdown="# Guide\n\nRagrails builds modular RAG workflows.",
+    embedding={
+        "provider": "voyage",
+        "model": "voyage-3",
+    },
+    storage={
+        "vector_db": "qdrant",
+        "collection": "docs",
+        "url": "http://localhost:6333",
+    },
+)
+
+print(result.stored)
+```
+
+You can also provide `docs`, `urls`, or `api` sources:
+
+```python
+rag.ingest(
+    docs=["files/guide.pdf"],
+    ingestion={"docs": {"mode": "single"}},
+    embedding={"provider": "voyage", "model": "voyage-3"},
+    storage={"vector_db": "qdrant", "collection": "docs"},
+)
+```
+
+URL ingestion uses Playwright through `crawl4ai`. Install the URL extra and run
+browser setup once in the target environment:
 
 ```bash
-pip install "ragrails[url,chunk,voyage,qdrant]"
+pip install "ragrails[url,voyage,qdrant]"
 ```
 
-URL scraping uses Playwright through `crawl4ai`. Run browser setup once in the
-same environment:
-
 ```python
-from ragrails import RagRails
-
-rag = RagRails()
-rag.setup_url()
+RagRails().setup_url()
 ```
 
-Then run the pipeline:
+### Query
+
+Run query embedding and retrieval in one call:
 
 ```python
-from ragrails import RagRails
-
-rag = RagRails()
-
-scraped = rag.scrape(
-    url="https://example.com",
-    mode="full",
+result = rag.query(
+    "What does the guide cover?",
+    embedding={
+        "provider": "voyage",
+        "model": "voyage-3",
+    },
+    retrieval={
+        "vector_db": "qdrant",
+        "collection": "docs",
+        "url": "http://localhost:6333",
+        "top_k": 5,
+    },
 )
 
-chunks = rag.chunk(
-    markdown=[
-        {"markdown": "# Example\n\nScraped markdown content", "source": "https://example.com"}
+for chunk in result.items:
+    print(chunk.text)
+```
+
+### Chat
+
+Chat is stateless. Pass `history` explicitly and persist the returned
+`result.history` in your app session.
+
+```python
+from ragrails import QueryRewriteConfig, RagRails
+
+rag = RagRails()
+
+llm = rag.llm(provider="openai", model="gpt-4.1-mini")
+embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
+
+history = []
+
+result = rag.chat(
+    "How do I authenticate?",
+    llm=llm,
+    embedder=embedder,
+    vector_db="qdrant",
+    collection="docs",
+    url="http://localhost:6333",
+    history=history,
+    query_rewrite=QueryRewriteConfig(enabled=True),
+)
+
+print(result.answer)
+history = result.history
+```
+
+### Edit and Delete Stored Chunks
+
+Edit and delete operations are vector database agnostic at the SDK layer.
+
+```python
+edit_result = rag.edit(
+    chunks=[
+        {
+            "id": "chunk-id",
+            "text": "Updated chunk text",
+            "source": "files/guide.pdf",
+            "metadata": {"title": "Guide"},
+        }
     ],
+    embedder=rag.embedder(provider="voyage", model="voyage-3"),
+    vector_db="qdrant",
+    collection="docs",
+    url="http://localhost:6333",
 )
 
-print(chunks.items)
-```
-
-### Documents to Vector DB
-
-```bash
-pip install "ragrails[chunk,voyage,qdrant]"
-```
-
-```python
-from ragrails import RagRails
-
-rag = RagRails()
-
-parsed = rag.parse(
-    folder="files/input",
+delete_result = rag.delete(
+    ids=["chunk-id"],
+    vector_db="qdrant",
+    collection="docs",
+    url="http://localhost:6333",
 )
-
-chunks = rag.chunk(
-    markdown=[
-        {"markdown": "# Guide\n\nParsed markdown content", "source": "guide.pdf"}
-    ],
-)
-
-print(chunks.items)
-```
-
-### API to Markdown
-
-```python
-from ragrails import RagRails
-
-result = RagRails().fetch(
-    url="https://api.example.com/v1/products",
-    title="Products",
-)
-
-print(result.outputs[0]["text"])
 ```
 
 ## CLI
 
-Ragrails ships with a CLI so you can run the pipeline without writing Python.
+Ragrails ships with a CLI for local workflows and smoke tests.
 
 ```bash
 ragrails --help
 ```
 
-See the [CLI docs](docs/cli/README.md) and stage-specific command docs.
+Examples:
+
+```bash
+ragrails ingest \
+  --markdown "# Guide\n\nUse Ragrails for RAG workflows." \
+  --vector-db qdrant \
+  --collection docs
+```
+
+```bash
+ragrails query "What does the guide cover?" \
+  --vector-db qdrant \
+  --collection docs
+```
+
+CLI docs live in [ragrails/interfaces/cli/README.md](ragrails/interfaces/cli/README.md).
 
 ## REST API
 
-Ragrails also ships a REST API server for language-agnostic HTTP usage.
+Ragrails ships a FastAPI server on top of the SDK.
 
 ```bash
 ragrails-api
 ```
 
-See the [REST API docs](docs/server/README.md) and stage-specific endpoint docs.
 Swagger UI is available at `http://127.0.0.1:8000/docs` when the server is
 running. The OpenAPI schema is available at `/v1/openapi.json`.
 
-## Notebooks
+REST docs live in
+[ragrails/interfaces/server/README.md](ragrails/interfaces/server/README.md).
 
-The repository includes Jupyter notebooks for interactive SDK workflows:
-
-| Notebook | Stage |
-|---|---|
-| `notebooks/01_ingestion.ipynb` | Ingestion |
-| `notebooks/02_chunking.ipynb` | Chunking |
-| `notebooks/03_embedding.ipynb` | Embedding |
-| `notebooks/03_store.ipynb` | Storing |
-| `notebooks/04_retrieval.ipynb` | Retrieval |
-
-## SDK Stages
-
-| Stage | Method | Output |
-|---|---|---|
-| URL ingestion | `rag.scrape(...)` | In-memory markdown outputs |
-| URL retry | `rag.scrape(dlq=...)` | Retried in-memory markdown outputs |
-| Document ingestion | `rag.parse(...)` | In-memory markdown outputs |
-| API ingestion | `rag.fetch(...)` | In-memory markdown outputs |
-| Chunking | `rag.chunk(...)` | In-memory chunk dictionaries |
-| Single-file chunk preview | `rag.chunk_file(...)` | In-memory chunk dictionaries |
-| Embedding | `rag.embed(...)` | Embedded vectors in a vector DB |
-| Vector storage | `rag.store(...)` | Alias for embedding and storing chunks |
-| Retrieval | `rag.retrieve(...)` | Ranked retrieved chunks |
-
-The usage interfaces are organized in the package under `ragrails/interfaces/`:
+## Package Structure
 
 ```text
-ragrails/interfaces/
-  sdk/
-  cli/
-  server/
+ragrails/
+  core/
+    stg_01_ingestors/
+    stg_02_chunker/
+    stg_03_embedder/
+    stg_04_storing/
+    stg_05_retriever/
+    stg_06_chat/
+  interfaces/
+    sdk/
+    cli/
+    server/
 ```
 
-Hosted documentation:
+## Interface Docs
 
-- [https://dev.ragrails.com](https://dev.ragrails.com)
-
-Repository docs:
-
-- [Docs index](docs/README.md)
-
-| Usage | Overview | Ingestion | Chunking | Embedding | Storing | Retrieval |
-|---|---|---|---|---|---|---|
-| SDK | [Overview](docs/sdk/README.md) | [Ingestion](docs/sdk/ingestion/README.md) | [Chunking](docs/sdk/chunking/README.md) | [Embedding](docs/sdk/embedding/README.md) | [Storing](docs/sdk/storing/README.md) | [Retrieval](docs/sdk/retrieval/README.md) |
-| CLI | [Overview](docs/cli/README.md) | [Ingestion](docs/cli/ingestion/README.md) | [Chunking](docs/cli/chunking/README.md) | [Embedding](docs/cli/embedding/README.md) | [Storing](docs/cli/storing/README.md) | [Retrieval](docs/cli/retrieval/README.md) |
-| REST API server | [Overview](docs/server/README.md) | [Ingestion](docs/server/ingestion/README.md) | [Chunking](docs/server/chunking/README.md) | [Embedding](docs/server/embedding/README.md) | [Storing](docs/server/storing/README.md) | [Retrieval](docs/server/retrieval/README.md) |
+| Interface | Docs |
+|---|---|
+| SDK chunking | [ragrails/interfaces/sdk/chunking/README.md](ragrails/interfaces/sdk/chunking/README.md) |
+| SDK embedding | [ragrails/interfaces/sdk/embedding/README.md](ragrails/interfaces/sdk/embedding/README.md) |
+| SDK storing | [ragrails/interfaces/sdk/storing/README.md](ragrails/interfaces/sdk/storing/README.md) |
+| SDK retrieval | [ragrails/interfaces/sdk/retrieval/README.md](ragrails/interfaces/sdk/retrieval/README.md) |
+| SDK chat | [ragrails/interfaces/sdk/chat/README.md](ragrails/interfaces/sdk/chat/README.md) |
+| CLI | [ragrails/interfaces/cli/README.md](ragrails/interfaces/cli/README.md) |
+| REST API | [ragrails/interfaces/server/README.md](ragrails/interfaces/server/README.md) |
 
 Specialized SDK ingestion docs:
 
-- [URL ingestion](docs/sdk/ingestion/url/README.md)
-- [Document ingestion](docs/sdk/ingestion/documents/README.md)
-- [API ingestion](docs/sdk/ingestion/api/README.md)
+- [URL ingestion](ragrails/interfaces/sdk/ingestion/url/README.md)
+- [Document ingestion](ragrails/interfaces/sdk/ingestion/docs/README.md)
+- [API ingestion](ragrails/interfaces/sdk/ingestion/api/README.md)
 
-Detailed usage, result types, and parameter references live in the stage docs.
-
-## Release Checks
+## Development Checks
 
 Run local interface checks:
 
@@ -226,15 +276,24 @@ scripts/test-cli.sh
 scripts/test-rest.sh
 ```
 
-Build and publish with `uv` directly:
+The repo uses `.githooks/pre-push`, so `git push` runs the same checks and
+blocks the push if any interface test fails.
+
+Build and validate release artifacts:
 
 ```bash
 uv build
+uvx twine check dist/*
+```
+
+Publish only after the checks pass:
+
+```bash
 uv publish
 ```
 
 ## Status
 
 The public SDK currently covers ingestion, chunking, embedding, vector storage,
-and retrieval. Chat and eval exist internally and will be exposed as public SDK
-surfaces later.
+retrieval, chat, vector edit/delete, and end-to-end ingestion/query pipeline
+helpers. CLI and REST API interfaces are built on top of the SDK.
