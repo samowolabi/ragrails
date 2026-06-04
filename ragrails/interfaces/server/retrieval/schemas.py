@@ -9,15 +9,21 @@ from pydantic import BaseModel
 
 class RetrieveRequest(BaseModel):
     query: str
+    provider: str = "voyage"
+    model: str = "voyage-3"
+    embedder_options: dict[str, Any] | None = None
     vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant"
     collection: str | None = None
     url: str | None = None
+    options: dict[str, Any] | None = None
     top_k: int = 10
-    embedder: str = "voyage"
-    model: str = "voyage-3"
-    rerank: bool = False
+    use_query_rewrite: bool = False
+    rewrite_context: str = ""
+    session_context: str = ""
+    use_rerank: bool = False
     reranker: str = "voyage"
     reranker_model: str = "rerank-2-lite"
+    reranker_options: dict[str, Any] | None = None
     rerank_top_k: int = 5
 
 
@@ -31,4 +37,8 @@ class RetrievedChunkResponse(BaseModel):
 
 class RetrieveResponse(BaseModel):
     query: str
-    results: list[RetrievedChunkResponse]
+    search_query: str
+    retrieved: int
+    items: list[RetrievedChunkResponse]
+    failed: int
+    errors: list[dict[str, Any]]

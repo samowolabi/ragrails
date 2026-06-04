@@ -1,0 +1,1 @@
+"""CLI storing tests."""

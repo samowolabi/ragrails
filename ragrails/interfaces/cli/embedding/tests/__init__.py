@@ -1,0 +1,1 @@
+"""CLI embedding tests."""

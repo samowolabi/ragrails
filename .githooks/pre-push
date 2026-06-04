@@ -1,2 +1,20 @@
 #!/usr/bin/env bash
-exit 0
+set -Eeuo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+run_check() {
+  local name="$1"
+  local command="$2"
+
+  printf "\n==> Running %s tests\n" "$name"
+  "$command"
+}
+
+run_check "core" "scripts/test-core.sh"
+run_check "SDK" "scripts/test-sdk.sh"
+run_check "CLI" "scripts/test-cli.sh"
+run_check "REST" "scripts/test-rest.sh"
+
+printf "\nPre-push checks passed\n"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import click
 
-from . import chat, chunking, embedding, ingestion, retrieval, storing
+from . import chat, chunking, embedding, ingestion, pipeline, retrieval, storing
 
 
 @click.group()
@@ -18,4 +18,5 @@ chunking.register(cli)
 embedding.register(cli)
 storing.register(cli)
 retrieval.register(cli)
+pipeline.register(cli)
 chat.register(cli)

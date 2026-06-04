@@ -4,40 +4,35 @@ from __future__ import annotations
 
 import click
 
-from ragrails.interfaces.cli.common import exit_with_error, print_errors
+from ragrails.interfaces.cli.common import exit_with_error, load_json_dir, print_errors, save_json
 from ragrails.interfaces.sdk import RagRails
 
 
 @click.command()
-@click.option("--input-dir", default="files/output/chunks", show_default=True, help="Folder containing chunk JSON files.")
-@click.option("--vector-db", default="qdrant", show_default=True, type=click.Choice(["qdrant", "pinecone", "weaviate"]), help="Vector database provider.")
-@click.option("--collection", default=None, help="Collection, index, or class name.")
-@click.option("--url", default=None, help="Vector database URL.")
-@click.option("--files", multiple=True, help="Specific chunk JSON files to embed (repeatable).")
-@click.option("--batch-size", default=64, show_default=True, help="Chunks per embedding/storage batch.")
-@click.option("--embedder", default="voyage", show_default=True, help="Embedding provider.")
+@click.option("--input-dir", required=True, help="Folder containing chunk JSON files.")
+@click.option("--output-dir", required=True, help="Folder to write embedded chunk JSON files to.")
+@click.option("--provider", default="voyage", show_default=True, help="Embedding provider.")
 @click.option("--model", default="voyage-3", show_default=True, help="Embedding model name.")
-def embed(input_dir, vector_db, collection, url, files, batch_size, embedder, model):
-    """Embed chunk JSON files and write vectors to a vector database."""
+@click.option("--batch-size", default=64, show_default=True, help="Chunks per embedding request.")
+def embed(input_dir, output_dir, provider, model, batch_size):
+    """Embed chunk JSON files and write vectors to an output directory."""
+    chunks = load_json_dir(input_dir)
+    if not chunks:
+        raise click.UsageError(f"No JSON files found in {input_dir}")
+
+    rag = RagRails()
+    embedder = rag.embedder(provider=provider, model=model, input_type="document")
+
     try:
-        result = RagRails().embed(
-            input_dir=input_dir,
-            vector_db=vector_db,
-            collection=collection,
-            url=url,
-            files=list(files) if files else None,
-            batch_size=batch_size,
-            embedder=embedder,
-            model=model,
-        )
+        result = rag.embed(chunks=chunks, embedder=embedder, batch_size=batch_size)
     except Exception as e:
         exit_with_error(e)
 
-    click.echo(f"Files embedded : {result.files}")
-    click.echo(f"Chunks embedded: {result.chunks}")
-    click.echo(f"Input dir      : {result.input_dir}")
-    click.echo(f"Provider       : {result.provider}")
-    click.echo(f"Collection     : {result.collection}")
+    path = save_json(result.items, output_dir, "embedded.json")
+    click.echo(f"Inputs   : {result.inputs}")
+    click.echo(f"Embedded : {result.embedded}")
+    click.echo(f"Failed   : {result.failed}")
+    click.echo(f"Saved to : {path}")
     print_errors(result.errors)
 
 

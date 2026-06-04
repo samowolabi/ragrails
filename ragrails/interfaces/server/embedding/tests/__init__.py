@@ -1,0 +1,1 @@
+"""REST embedding tests."""

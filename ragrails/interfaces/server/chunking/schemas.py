@@ -17,9 +17,8 @@ class ChunkRequest(BaseModel):
 
 
 class ChunkResponse(BaseModel):
-    files: int
+    inputs: int
     chunks: int
-    output_files: list[str]
     items: list[dict]
     failed: int
     errors: list[str]

@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-04
+
 ### Added
 
 - Added smoke test coverage for SDK imports, CLI commands, server routes, local chunking, and docs structure.

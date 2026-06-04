@@ -8,20 +8,17 @@ from pydantic import BaseModel
 
 
 class EmbedRequest(BaseModel):
-    input_dir: str = "files/output/chunks"
-    vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant"
-    collection: str | None = None
-    url: str | None = None
-    files: str | list[str] | None = None
-    batch_size: int = 64
-    embedder: str = "voyage"
+    chunks: list[dict]
+    provider: str = "voyage"
     model: str = "voyage-3"
+    input_type: str = "document"
+    batch_size: int = 64
+    options: dict | None = None
 
 
 class EmbedResponse(BaseModel):
-    files: int
-    chunks: int
-    input_dir: str
-    provider: str
-    collection: str
-    errors: list[str]
+    inputs: int
+    embedded: int
+    items: list[dict]
+    failed: int
+    errors: list[dict]

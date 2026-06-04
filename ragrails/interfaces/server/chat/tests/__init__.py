@@ -1,0 +1,1 @@
+"""REST chat tests."""

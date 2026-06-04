@@ -948,6 +948,22 @@ wheels = [
 ]
 
 [[package]]
+name = "fastapi"
+version = "0.136.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/81/2d/ff8d91d7b564d464629a0fd50a4489c97fcb836ac230bf3a7269232a9b1f/fastapi-0.136.3.tar.gz", hash = "sha256:e487fae93ad408e6f47641ee4dfe389864fd7bec92e547ea8498fc13f43e83ab", size = 396410, upload-time = "2026-05-23T18:53:15.192Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/82/45359b62a067409bd929ae8a56b8ed13e5a8c8a61194b3c236920999ab83/fastapi-0.136.3-py3-none-any.whl", hash = "sha256:3d2a69bdf04b7e9f3afa292c3bc7a98816bbfafa10bc9b45f3f3700d2f761620", size = 117481, upload-time = "2026-05-23T18:53:16.924Z" },
+]
+
+[[package]]
 name = "fastuuid"
 version = "0.14.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3904,17 +3920,22 @@ name = "ragrails"
 version = "0.2.1"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
+    { name = "fastapi" },
     { name = "httpx" },
     { name = "langchain-text-splitters" },
     { name = "markitdown", extra = ["docx", "pdf"] },
     { name = "pymupdf4llm" },
     { name = "python-dotenv" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
 all = [
     { name = "anthropic" },
+    { name = "click" },
     { name = "crawl4ai" },
+    { name = "fastapi" },
     { name = "flagembedding" },
     { name = "httpx" },
     { name = "langchain-text-splitters" },
@@ -3924,6 +3945,7 @@ all = [
     { name = "pymupdf4llm" },
     { name = "qdrant-client" },
     { name = "sentence-transformers" },
+    { name = "uvicorn" },
     { name = "voyageai" },
     { name = "weaviate-client" },
 ]
@@ -3942,6 +3964,31 @@ qdrant = [
 rerank = [
     { name = "flagembedding" },
     { name = "sentence-transformers" },
+]
+server = [
+    { name = "fastapi" },
+    { name = "uvicorn" },
+]
+server-pinecone = [
+    { name = "fastapi" },
+    { name = "openai" },
+    { name = "pinecone" },
+    { name = "uvicorn" },
+    { name = "voyageai" },
+]
+server-qdrant = [
+    { name = "fastapi" },
+    { name = "openai" },
+    { name = "qdrant-client" },
+    { name = "uvicorn" },
+    { name = "voyageai" },
+]
+server-weaviate = [
+    { name = "fastapi" },
+    { name = "openai" },
+    { name = "uvicorn" },
+    { name = "voyageai" },
+    { name = "weaviate-client" },
 ]
 store-pinecone = [
     { name = "langchain-text-splitters" },
@@ -3972,8 +4019,16 @@ weaviate = [
 requires-dist = [
     { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.97.0" },
     { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.97.0" },
+    { name = "click", specifier = ">=8.1.0" },
+    { name = "click", marker = "extra == 'all'", specifier = ">=8.1.0" },
     { name = "crawl4ai", marker = "extra == 'all'", specifier = ">=0.8.6" },
     { name = "crawl4ai", marker = "extra == 'url'", specifier = ">=0.8.6" },
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "fastapi", marker = "extra == 'all'", specifier = ">=0.115" },
+    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.115" },
+    { name = "fastapi", marker = "extra == 'server-pinecone'", specifier = ">=0.115" },
+    { name = "fastapi", marker = "extra == 'server-qdrant'", specifier = ">=0.115" },
+    { name = "fastapi", marker = "extra == 'server-weaviate'", specifier = ">=0.115" },
     { name = "flagembedding", marker = "extra == 'all'", specifier = ">=1.4.0" },
     { name = "flagembedding", marker = "extra == 'rerank'", specifier = ">=1.4.0" },
     { name = "httpx", specifier = ">=0.27.2" },
@@ -3987,27 +4042,42 @@ requires-dist = [
     { name = "markitdown", extras = ["docx", "pdf"], marker = "extra == 'all'", specifier = ">=0.1.5" },
     { name = "openai", marker = "extra == 'all'", specifier = ">=2.32.0" },
     { name = "openai", marker = "extra == 'openai'", specifier = ">=2.32.0" },
+    { name = "openai", marker = "extra == 'server-pinecone'", specifier = ">=2.32.0" },
+    { name = "openai", marker = "extra == 'server-qdrant'", specifier = ">=2.32.0" },
+    { name = "openai", marker = "extra == 'server-weaviate'", specifier = ">=2.32.0" },
     { name = "pinecone", marker = "extra == 'all'", specifier = ">=9.0.0" },
     { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=9.0.0" },
+    { name = "pinecone", marker = "extra == 'server-pinecone'", specifier = ">=9.0.0" },
     { name = "pinecone", marker = "extra == 'store-pinecone'", specifier = ">=9.0.0" },
     { name = "pymupdf4llm", specifier = ">=1.27.2.3" },
     { name = "pymupdf4llm", marker = "extra == 'all'", specifier = ">=1.27.2.3" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "qdrant-client", marker = "extra == 'all'", specifier = ">=1.17.1" },
     { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.17.1" },
+    { name = "qdrant-client", marker = "extra == 'server-qdrant'", specifier = ">=1.17.1" },
     { name = "qdrant-client", marker = "extra == 'store-qdrant'", specifier = ">=1.17.1" },
     { name = "sentence-transformers", marker = "extra == 'all'", specifier = ">=5.4.1" },
     { name = "sentence-transformers", marker = "extra == 'rerank'", specifier = ">=5.4.1" },
+    { name = "uvicorn", specifier = ">=0.34" },
+    { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.34" },
+    { name = "uvicorn", marker = "extra == 'server'", specifier = ">=0.34" },
+    { name = "uvicorn", marker = "extra == 'server-pinecone'", specifier = ">=0.34" },
+    { name = "uvicorn", marker = "extra == 'server-qdrant'", specifier = ">=0.34" },
+    { name = "uvicorn", marker = "extra == 'server-weaviate'", specifier = ">=0.34" },
     { name = "voyageai", marker = "extra == 'all'", specifier = ">=0.3.7" },
+    { name = "voyageai", marker = "extra == 'server-pinecone'", specifier = ">=0.3.7" },
+    { name = "voyageai", marker = "extra == 'server-qdrant'", specifier = ">=0.3.7" },
+    { name = "voyageai", marker = "extra == 'server-weaviate'", specifier = ">=0.3.7" },
     { name = "voyageai", marker = "extra == 'store-pinecone'", specifier = ">=0.3.7" },
     { name = "voyageai", marker = "extra == 'store-qdrant'", specifier = ">=0.3.7" },
     { name = "voyageai", marker = "extra == 'store-weaviate'", specifier = ">=0.3.7" },
     { name = "voyageai", marker = "extra == 'voyage'", specifier = ">=0.3.7" },
     { name = "weaviate-client", marker = "extra == 'all'", specifier = ">=4.20.5" },
+    { name = "weaviate-client", marker = "extra == 'server-weaviate'", specifier = ">=4.20.5" },
     { name = "weaviate-client", marker = "extra == 'store-weaviate'", specifier = ">=4.20.5" },
     { name = "weaviate-client", marker = "extra == 'weaviate'", specifier = ">=4.20.5" },
 ]
-provides-extras = ["url", "voyage", "qdrant", "pinecone", "weaviate", "openai", "anthropic", "rerank", "store-qdrant", "store-pinecone", "store-weaviate", "all"]
+provides-extras = ["url", "voyage", "qdrant", "pinecone", "weaviate", "server", "server-qdrant", "server-pinecone", "server-weaviate", "openai", "anthropic", "rerank", "store-qdrant", "store-pinecone", "store-weaviate", "all"]
 
 [[package]]
 name = "rank-bm25"
@@ -4819,6 +4889,19 @@ wheels = [
 ]
 
 [[package]]
+name = "starlette"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/25/44/ec35f1b6e83094b997da438a02c8c9b0ade2b1e84cfc48bd4656780760a6/starlette-1.2.1.tar.gz", hash = "sha256:9b9b5ebb992e67d6093741e63c2f59e4f6fff986f81163c087867bd7b924b3f6", size = 2701854, upload-time = "2026-05-31T01:07:51.847Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1c/54/196d0c1db10af76baa4f64894448505d60d3cdf70ef92cbb35f46a4e4c71/starlette-1.2.1-py3-none-any.whl", hash = "sha256:4de0082d08c8f6764a85a54cf1120d6939507a19905c7768acad2a9f875d2b89", size = 73350, upload-time = "2026-05-31T01:07:50.09Z" },
+]
+
+[[package]]
 name = "sympy"
 version = "1.14.0"
 source = { registry = "https://pypi.org/simple" }
@@ -5194,6 +5277,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/20/049418d094d396dfa6606b30af925cc68a6670c3b9103b23e6990f84b589/uuid_utils-0.14.1-pp311-pypy311_pp73-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:50fffc2827348c1e48972eed3d1c698959e63f9d030aa5dd82ba451113158a62", size = 476731, upload-time = "2026-02-20T22:50:30.589Z" },
     { url = "https://files.pythonhosted.org/packages/77/a1/0857f64d53a90321e6a46a3d4cc394f50e1366132dcd2ae147f9326ca98b/uuid_utils-0.14.1-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c1dbe718765f70f5b7f9b7f66b6a937802941b1cc56bcf642ce0274169741e01", size = 338902, upload-time = "2026-02-20T22:50:33.927Z" },
     { url = "https://files.pythonhosted.org/packages/ed/d0/5bf7cbf1ac138c92b9ac21066d18faf4d7e7f651047b700eb192ca4b9fdb/uuid_utils-0.14.1-pp311-pypy311_pp73-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:258186964039a8e36db10810c1ece879d229b01331e09e9030bc5dcabe231bd2", size = 364700, upload-time = "2026-02-20T22:50:21.732Z" },
+]
+
+[[package]]
+name = "uvicorn"
+version = "0.49.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "h11" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/1f/fa18009dea8469069cca78a4e877a008ab78f08b064bfc9ab891579077ff/uvicorn-0.49.0.tar.gz", hash = "sha256:ebf4271aa580d9de97f93192d4595176df6e91f9aae919ca73e4fc07df1e66a3", size = 91284, upload-time = "2026-06-03T22:01:30.448Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/fa/e1388bbcf24ef3274f45c0c1c7b501fd14971037c1b6ee23610553307497/uvicorn-0.49.0-py3-none-any.whl", hash = "sha256:ba3d14c3ee7e41c6c654c46c9eb489d33213cdd30aa1696eab1374337c13f68f", size = 71376, upload-time = "2026-06-03T22:01:29.037Z" },
 ]
 
 [[package]]

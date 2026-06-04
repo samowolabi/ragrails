@@ -5,8 +5,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 UV="${UV:-uv}"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$ROOT/.uv-cache}"
 
-"$UV" run --locked python -m unittest discover \
-  -s tests/cli \
-  -p "test_*.py" \
-  -v
+"$UV" run python -m unittest discover ragrails/interfaces/cli "$@"

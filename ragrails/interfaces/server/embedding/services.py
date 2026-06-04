@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Any
 
-from ragrails import RagRails
-from ragrails.interfaces.server.common import model_data
+from ragrails.interfaces.sdk import RagRails
+from ragrails.interfaces.server.common import model_data, result_data
 
 from .schemas import EmbedRequest
 
 
 def embed_chunks(request: EmbedRequest) -> dict[str, Any]:
-    return asdict(RagRails().embed(**model_data(request)))
+    data = model_data(request)
+    chunks = data.pop("chunks")
+    batch_size = data.pop("batch_size")
+    embedder = RagRails().embedder(**data)
+    return result_data(RagRails().embed(chunks=chunks, embedder=embedder, batch_size=batch_size))

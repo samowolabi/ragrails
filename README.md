@@ -217,31 +217,20 @@ Detailed usage, result types, and parameter references live in the stage docs.
 
 ## Release Checks
 
-Run all local release checks:
+Run local interface checks:
 
 ```bash
-scripts/test.sh
-```
-
-Run individual checks:
-
-```bash
-scripts/smoke-test.sh
+scripts/test-core.sh
+scripts/test-sdk.sh
 scripts/test-cli.sh
-scripts/check-changelog.sh
+scripts/test-rest.sh
 ```
 
-Install the git hook to run checks automatically before every `git push`:
+Build and publish with `uv` directly:
 
 ```bash
-scripts/install-git-hooks.sh
-```
-
-Use the release wrappers so checks run automatically before build or publish:
-
-```bash
-scripts/build.sh
-scripts/publish.sh
+uv build
+uv publish
 ```
 
 ## Status

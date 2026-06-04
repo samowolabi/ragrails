@@ -1,0 +1,1 @@
+"""REST root tests."""

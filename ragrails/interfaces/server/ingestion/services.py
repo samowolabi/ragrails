@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Any
 
-from ragrails import RagRails
-from ragrails.interfaces.server.common import model_data
+from ragrails.interfaces.sdk import RagRails
+from ragrails.interfaces.server.common import model_data, result_data
 
 from .schemas import ApiIngestRequest, DocsIngestRequest, UrlIngestRequest
 
@@ -23,12 +22,12 @@ def _normalize_docs_request(request: DocsIngestRequest) -> dict[str, Any]:
 
 
 def fetch_api(request: ApiIngestRequest) -> dict[str, Any]:
-    return asdict(RagRails().fetch(**model_data(request)))
+    return result_data(RagRails().fetch(**model_data(request)))
 
 
 def scrape_url(request: UrlIngestRequest) -> dict[str, Any]:
-    return asdict(RagRails().scrape(**model_data(request)))
+    return result_data(RagRails().scrape(**model_data(request)))
 
 
 def parse_docs(request: DocsIngestRequest) -> dict[str, Any]:
-    return asdict(RagRails().parse(**_normalize_docs_request(request)))
+    return result_data(RagRails().parse(**_normalize_docs_request(request)))
