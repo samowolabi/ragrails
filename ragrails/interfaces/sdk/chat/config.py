@@ -15,8 +15,8 @@ class HistoryCompactionConfig:
 @dataclass(frozen=True)
 class QueryRewriteConfig:
     enabled: bool = False
-    rewrite_context: str = ""
     session_context: str = ""
+    llm: object | None = None
 
 
 @dataclass(frozen=True)

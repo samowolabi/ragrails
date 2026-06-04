@@ -139,6 +139,7 @@ class ChatCoreTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["retrieval"]["retrieved"], 2)
         self.assertEqual([source["id"] for source in result["sources"]], ["C1", "C2"])
+        self.assertEqual(result["answer_confidence"]["level"], "high")
         self.assertIn("Context:", llm.calls[0]["user"])
         self.assertIn("[C1] Auth", llm.calls[0]["user"])
         self.assertEqual(result["history"][-2:], [
@@ -213,6 +214,7 @@ class ChatCoreTests(unittest.TestCase):
         self.assertEqual(result["sources"], [])
         self.assertEqual(result["retrieval_quality"]["status"], "low_confidence")
         self.assertEqual(result["retrieval_quality"]["passed_chunks"], 0)
+        self.assertEqual(result["answer_confidence"]["level"], "low")
         self.assertIn("not confident enough", llm.calls[0]["user"])
 
     def test_run_chat_can_ask_clarifying_question_for_low_quality_retrieval(self) -> None:
@@ -253,6 +255,7 @@ class ChatCoreTests(unittest.TestCase):
         self.assertEqual(result["history"], [])
         self.assertEqual(result["errors"][0]["stage"], "quality")
         self.assertEqual(result["retrieval_quality"]["mode"], RETURN_NO_ANSWER)
+        self.assertEqual(result["answer_confidence"]["level"], "none")
 
     def test_run_chat_can_refuse_grounded_answer_naturally_for_low_quality_retrieval(self) -> None:
         llm = FakeLLM("I could not find enough relevant context to answer that reliably.")

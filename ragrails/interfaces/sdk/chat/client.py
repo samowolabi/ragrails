@@ -85,6 +85,7 @@ class ChatMixin:
                 embedder=embedder,
                 store=store,
                 reranker=reranker,
+                rewrite_llm=query_rewrite.llm,
                 chat_config=ChatConfig(
                     persona=persona,
                     use_intent_routing=intent_routing.enabled,
@@ -96,7 +97,7 @@ class ChatMixin:
                     ),
                 ),
                 retrieval_config=retrieval_config or RetrieverConfig(use_query_rewrite=query_rewrite.enabled),
-                rewrite_context=query_rewrite.rewrite_context,
+                rewrite_context=persona,
                 session_context=query_rewrite.session_context,
                 history=list(history or []),
             )
@@ -118,6 +119,7 @@ class ChatMixin:
             llm=result["llm"],
             errors=result["errors"],
             retrieval_quality=result.get("retrieval_quality", {"status": "not_evaluated"}),
+            answer_confidence=result.get("answer_confidence", {"level": "unknown", "reason": "missing"}),
             compacted=compacted,
             intent=result.get("intent", "rag"),
         )
@@ -178,10 +180,12 @@ class ChatMixin:
             raise ValueError("history_compaction.keep_recent must be smaller than history_compaction.history_limit")
         if not isinstance(query_rewrite.enabled, bool):
             raise TypeError("query_rewrite.enabled must be a boolean")
-        if not isinstance(query_rewrite.rewrite_context, str):
-            raise TypeError("query_rewrite.rewrite_context must be a string")
         if not isinstance(query_rewrite.session_context, str):
             raise TypeError("query_rewrite.session_context must be a string")
+        if query_rewrite.llm is not None and (
+            not hasattr(query_rewrite.llm, "complete") or not callable(query_rewrite.llm.complete)
+        ):
+            raise TypeError("query_rewrite.llm must be an LLM object")
         if not isinstance(intent_routing.enabled, bool):
             raise TypeError("intent_routing.enabled must be a boolean")
         if (

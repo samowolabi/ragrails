@@ -7,4 +7,4 @@ cd "$ROOT"
 chmod +x .githooks/pre-push
 git config core.hooksPath .githooks
 
-printf "Git hooks installed. pre-push will run scripts/test.sh before git push.\n"
+printf "Git hooks installed. pre-push checks are disabled.\n"

@@ -131,5 +131,6 @@ class ChatResult:
     llm: dict
     errors: list[dict]
     retrieval_quality: dict
+    answer_confidence: dict
     compacted: bool = False
     intent: str = "rag"

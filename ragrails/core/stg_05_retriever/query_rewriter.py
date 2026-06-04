@@ -6,7 +6,7 @@ technical language before vector retrieval.
 from ragrails.models.llm.base import LLMProvider
 
 
-_SYSTEM = """You are a query rewriter for a documentation search system.
+_SYSTEM = """You are a query rewriter for a knowledge base search system.
 Your job is to produce a standalone search query that captures the user's full intent.
 
 Rules:
@@ -32,7 +32,7 @@ def rewrite(query: str, llm: LLMProvider, context: str = "", session_context: st
     # preventing the LLM from confusing prior conversation content with the current request.
     parts = []
     if context:
-        parts.append(f"Documentation: {context}")
+        parts.append(f"Search domain: {context}")
     if session_context:
         parts.append(f"<conversation_context>\n{session_context}\n</conversation_context>")
 

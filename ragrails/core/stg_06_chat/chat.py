@@ -12,6 +12,7 @@ from ragrails.models.reranker.base import Reranker
 from ragrails.models.vector_db.base import VectorStore
 from ragrails.core.stg_05_retriever import RetrieverConfig, run_retrieval
 
+from .confidence import build_answer_confidence
 from .config import ChatConfig
 from .context import build_context, extract_sources, validate_citations
 from .intent import RAG_INTENT, detect_intent, should_bypass_retrieval
@@ -32,6 +33,7 @@ def run_chat(
     embedder: EmbeddingModel,
     store: VectorStore,
     reranker: Reranker | None = None,
+    rewrite_llm: LLMProvider | None = None,
     chat_config: ChatConfig | None = None,
     retrieval_config: RetrieverConfig | None = None,
     rewrite_context: str = "",
@@ -61,7 +63,7 @@ def run_chat(
         query=query,
         model=embedder,
         store=store,
-        rewrite_llm=llm,
+        rewrite_llm=rewrite_llm or llm,
         reranker=reranker,
         config=retrieval_config or RetrieverConfig(),
         rewrite_context=rewrite_context or cfg.persona,
@@ -240,16 +242,26 @@ def _response(
     errors: list[dict] | None = None,
     intent: str = RAG_INTENT,
     retrieval_quality: dict | None = None,
+    answer_confidence: dict | None = None,
 ) -> dict:
+    quality = retrieval_quality or {"status": "not_evaluated"}
+    source_items = sources or []
+    error_items = errors or []
     return {
         "answer": answer,
-        "sources": sources or [],
+        "sources": source_items,
         "history": list(history or []),
         "retrieval": retrieval or {"retrieved": 0, "failed": 0, "outputs": [], "errors": []},
         "llm": llm or {},
-        "errors": errors or [],
+        "errors": error_items,
         "intent": intent,
-        "retrieval_quality": retrieval_quality or {"status": "not_evaluated"},
+        "retrieval_quality": quality,
+        "answer_confidence": answer_confidence or build_answer_confidence(
+            retrieval_quality=quality,
+            sources=source_items,
+            intent=intent,
+            errors=error_items,
+        ),
     }
 
 

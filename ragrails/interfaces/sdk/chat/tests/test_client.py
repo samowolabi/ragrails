@@ -57,6 +57,7 @@ def _chat_result(history: list[dict] | None = None) -> dict:
         "llm": {"provider": "fake", "model": "fake"},
         "errors": [],
         "retrieval_quality": {"status": "pass"},
+        "answer_confidence": {"level": "medium", "reason": "test"},
         "intent": "rag",
     }
 
@@ -88,6 +89,7 @@ class SDKChatTests(unittest.TestCase):
         self.assertEqual(run_chat.call_args.kwargs["query"], "How do I authenticate?")
         self.assertEqual(result.answer, "Use bearer auth.")
         self.assertEqual(result.history, history)
+        self.assertEqual(result.answer_confidence, {"level": "medium", "reason": "test"})
         self.assertFalse(result.compacted)
 
     def test_chat_compacts_old_history_after_limit_and_keeps_recent_messages(self) -> None:
@@ -162,6 +164,7 @@ class SDKChatTests(unittest.TestCase):
         self.assertEqual(run_chat.call_args.kwargs["history"], history)
 
     def test_chat_forwards_query_rewrite_and_intent_flags(self) -> None:
+        rewrite_llm = FakeLLM()
         with (
             patch("ragrails.models.vector_db.registry.create_vector_store", return_value=FakeStore()),
             patch("ragrails.core.stg_06_chat.run_chat", return_value=_chat_result()) as run_chat,
@@ -170,10 +173,11 @@ class SDKChatTests(unittest.TestCase):
                 "How do I do it?",
                 llm=FakeLLM(),
                 embedder=FakeEmbedder(),
+                persona="Product knowledge base",
                 query_rewrite=QueryRewriteConfig(
                     enabled=True,
-                    rewrite_context="Product docs",
                     session_context="Auth flow",
+                    llm=rewrite_llm,
                 ),
                 intent_routing=IntentRoutingConfig(enabled=False),
                 retrieval_quality=ChatRetrievalQualityConfig(
@@ -186,7 +190,8 @@ class SDKChatTests(unittest.TestCase):
 
         call = run_chat.call_args.kwargs
         self.assertTrue(call["retrieval_config"].use_query_rewrite)
-        self.assertEqual(call["rewrite_context"], "Product docs")
+        self.assertIs(call["rewrite_llm"], rewrite_llm)
+        self.assertEqual(call["rewrite_context"], "Product knowledge base")
         self.assertEqual(call["session_context"], "Auth flow")
         self.assertFalse(call["chat_config"].use_intent_routing)
         self.assertEqual(call["chat_config"].retrieval_quality.min_retrieval_score, 0.7)
@@ -245,6 +250,14 @@ class SDKChatTests(unittest.TestCase):
 
         with self.assertRaisesRegex(TypeError, "retrieval_quality must be a ChatRetrievalQualityConfig"):
             SDK().chat("Question", llm=FakeLLM(), embedder=FakeEmbedder(), retrieval_quality="bad")
+
+        with self.assertRaisesRegex(TypeError, "query_rewrite.llm must be an LLM object"):
+            SDK().chat(
+                "Question",
+                llm=FakeLLM(),
+                embedder=FakeEmbedder(),
+                query_rewrite=QueryRewriteConfig(enabled=True, llm=object()),
+            )
 
 
 if __name__ == "__main__":
