@@ -15,7 +15,7 @@ ragrails chat "How do payouts work?" \
   --vector-db qdrant \
   --collection rag_chunks \
   --llm-provider openai \
-  --llm-model gpt-4.1-mini
+  --llm-model gpt-4o-mini
 ```
 
 Use a history file for explicit stateless sessions:

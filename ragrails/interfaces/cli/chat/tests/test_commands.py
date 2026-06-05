@@ -54,7 +54,7 @@ class CliChatTests(unittest.TestCase):
                     "--llm-provider",
                     "openai",
                     "--llm-model",
-                    "gpt-4.1-mini",
+                    "gpt-4o-mini",
                     "--max-tokens",
                     "512",
                     "--embedder-provider",
@@ -67,7 +67,7 @@ class CliChatTests(unittest.TestCase):
                 saved_history = json.load(file)
 
         self.assertEqual(result.exit_code, 0, result.output)
-        llm.assert_called_once_with(provider="openai", model="gpt-4.1-mini", max_tokens=512)
+        llm.assert_called_once_with(provider="openai", model="gpt-4o-mini", max_tokens=512)
         embedder.assert_called_once_with(provider="voyage", model="voyage-3", input_type="query")
         call = chat.call_args.kwargs
         self.assertEqual(chat.call_args.args, ("How do payouts work?",))

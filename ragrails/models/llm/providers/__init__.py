@@ -3,6 +3,7 @@ from importlib import import_module
 PROVIDER_MODULES = {
     "openai": "ragrails.models.llm.providers.openai",
     "anthropic": "ragrails.models.llm.providers.anthropic",
+    "google": "ragrails.models.llm.providers.google",
 }
 
 

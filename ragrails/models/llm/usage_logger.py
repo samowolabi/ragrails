@@ -1,5 +1,5 @@
 """
-Token usage logger — appends one JSON record per LLM call to files/output/token_usage.jsonl.
+Token usage logger. Appends one JSON record per LLM call to files/output/token_usage.jsonl.
 
 Each record: timestamp, action, provider, model, input_tokens, output_tokens, cost_usd.
 """

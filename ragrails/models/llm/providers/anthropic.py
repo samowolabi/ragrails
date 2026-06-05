@@ -15,7 +15,7 @@ from ..base import (
     ToolLoopMessage,
     ToolResultMessage,
 )
-from .meta import ANTHROPIC_MODELS
+from .catalog import ANTHROPIC_MODELS
 
 load_dotenv()
 

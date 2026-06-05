@@ -16,7 +16,7 @@ from ..base import (
     ToolLoopMessage,
     ToolResultMessage,
 )
-from .meta import OPENAI_MODELS
+from .catalog import OPENAI_MODELS
 
 load_dotenv()
 

@@ -8,3 +8,4 @@ UV="${UV:-uv}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$ROOT/.uv-cache}"
 
 "$UV" run python -m unittest discover ragrails/core "$@"
+"$UV" run python -m unittest discover ragrails/models "$@"

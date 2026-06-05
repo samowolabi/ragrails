@@ -13,7 +13,7 @@ from ragrails.interfaces.sdk.chat import HistoryCompactionConfig, IntentRoutingC
 @click.command("chat")
 @click.argument("query", required=False)
 @click.option("--llm-provider", default="openai", show_default=True, help="LLM provider.")
-@click.option("--llm-model", default="gpt-4.1-mini", show_default=True, help="LLM model.")
+@click.option("--llm-model", default="gpt-4o-mini", show_default=True, help="LLM model.")
 @click.option("--max-tokens", default=1024, show_default=True, help="LLM max output tokens.")
 @click.option("--embedder-provider", default="voyage", show_default=True, help="Query embedding provider.")
 @click.option("--embedder-model", default="voyage-3", show_default=True, help="Query embedding model.")

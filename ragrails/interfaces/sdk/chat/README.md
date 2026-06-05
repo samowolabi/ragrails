@@ -18,7 +18,7 @@ from ragrails import (
 
 rag = RagRails()
 
-llm = rag.llm(provider="openai", model="gpt-4.1-mini")
+llm = rag.llm(provider="openai", model="gpt-4o-mini")
 query_embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
 
 history = []

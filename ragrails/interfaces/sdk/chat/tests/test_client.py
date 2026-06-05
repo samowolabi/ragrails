@@ -204,12 +204,12 @@ class SDKChatTests(unittest.TestCase):
         fake_llm = FakeLLM()
 
         with patch("ragrails.models.llm.config.create_llm", return_value=fake_llm) as create_llm:
-            result = SDK().llm(provider="openai", model="gpt-4.1-mini", max_tokens=500)
+            result = SDK().llm(provider="openai", model="gpt-4o-mini", max_tokens=500)
 
         self.assertIs(result, fake_llm)
         config = create_llm.call_args.args[0]
         self.assertEqual(config.provider, "openai")
-        self.assertEqual(config.model, "gpt-4.1-mini")
+        self.assertEqual(config.model, "gpt-4o-mini")
         self.assertEqual(config.max_tokens, 500)
 
     def test_chat_wraps_missing_vector_store_dependency(self) -> None:

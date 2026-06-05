@@ -150,7 +150,7 @@ result = rag.fetch(
     url="https://api.example.com/posts",
     title="Blog posts",
     headers={"Authorization": "Bearer token"},
-    pagination={"type": "page", "page_param": "page", "page_size": 100},
+    pagination={"type": "page", "param": "page", "size_param": "per_page", "size": 100},
     max_pages=10,
 )
 
@@ -210,7 +210,7 @@ result.items     # chunk dicts with an added "embedding" vector field
 result.errors    # list of error dicts
 ```
 
-Supported providers: `voyage`, `openai`.
+Supported provider: `voyage` (`voyage-3`, `voyage-3-lite`, `voyage-3-large`).
 
 ---
 
@@ -296,7 +296,7 @@ result = rag.retrieve(
 **With query rewriting**
 
 ```python
-rewrite_llm = rag.llm(provider="openai", model="gpt-4.1-mini")
+rewrite_llm = rag.llm(provider="openai", model="gpt-4o-mini")
 
 result = rag.retrieve(
     "What about the second step?",
@@ -322,7 +322,7 @@ Chat is stateless. Pass `history` in and persist `result.history` in your applic
 from ragrails import QueryRewriteConfig, RagRails
 
 rag = RagRails()
-llm = rag.llm(provider="openai", model="gpt-4.1-mini")
+llm = rag.llm(provider="openai", model="gpt-4o-mini")
 embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
 
 history = []
@@ -490,7 +490,7 @@ ragrails chat "How do I authenticate?" \
   --collection docs \
   --url http://localhost:6333 \
   --llm-provider openai \
-  --llm-model gpt-4.1-mini
+  --llm-model gpt-4o-mini
 ```
 
 Stateless multi-turn with a history file:

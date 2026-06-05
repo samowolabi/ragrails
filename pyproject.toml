@@ -99,6 +99,9 @@ openai = [
 anthropic = [
     "anthropic>=0.97.0",
 ]
+google = [
+    "google-genai>=1.0.0",
+]
 rerank = [
     "flagembedding>=1.4.0",
     "sentence-transformers>=5.4.1",
@@ -124,6 +127,7 @@ all = [
     "crawl4ai>=0.8.6",
     "fastapi>=0.115",
     "flagembedding>=1.4.0",
+    "google-genai>=1.0.0",
     "httpx>=0.27.2",
     "markitdown[docx,pdf]>=0.1.5",
     "langchain-text-splitters>=1.1.2",

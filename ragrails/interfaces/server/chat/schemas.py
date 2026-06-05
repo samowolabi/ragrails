@@ -32,7 +32,7 @@ class ChatRetrievalQualityRequest(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     llm_provider: str = "openai"
-    llm_model: str = "gpt-4.1-mini"
+    llm_model: str = "gpt-4o-mini"
     max_tokens: int = 1024
     embedder_provider: str = "voyage"
     embedder_model: str = "voyage-3"

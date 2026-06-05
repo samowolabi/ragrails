@@ -1,7 +1,7 @@
 """Provider-aggregated model registry."""
 
 from .providers import PROVIDERS
-from .providers.meta import MODELS
+from .providers.catalog import MODELS
 from .types import ModelInfo
 
 DEFAULT_PROVIDER = "openai"
