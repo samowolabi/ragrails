@@ -124,6 +124,25 @@ class PipelineSDKTests(unittest.TestCase):
         self.assertEqual(sdk.calls[2], ("fetch", {"url": "https://api.example.com/posts", "max_pages": 2}))
         self.assertEqual(len(sdk.calls[3][1]["markdown"]), 3)
 
+    def test_ingest_can_run_source_types_in_parallel(self) -> None:
+        sdk = PipelineSDK()
+
+        result = sdk.ingest(
+            docs=["guide.md"],
+            urls="https://example.com",
+            api="https://api.example.com/posts",
+            markdown="Manual text",
+            concurrency="parallel",
+        )
+
+        self.assertEqual(result.sources, 4)
+        self.assertEqual(set(result.source_results), {"docs", "urls", "api", "markdown"})
+        chunk_call = next(kwargs for name, kwargs in sdk.calls if name == "chunk")
+        self.assertEqual(
+            [item["text"] for item in chunk_call["markdown"]],
+            ["Doc text", "URL text", "API text", "Manual text"],
+        )
+
     def test_ingest_accepts_stage_argument_dicts(self) -> None:
         sdk = PipelineSDK()
 
@@ -147,6 +166,9 @@ class PipelineSDKTests(unittest.TestCase):
 
         with self.assertRaisesRegex(TypeError, "ingestion\\['docs'\\] must be a dictionary"):
             PipelineSDK().ingest(docs=["guide.md"], ingestion={"docs": ["bad"]})
+
+        with self.assertRaisesRegex(ValueError, "concurrency must be 'serial' or 'parallel'"):
+            PipelineSDK().ingest(markdown="Hello", concurrency="bad")
 
     def test_query_creates_embedder_and_retrieves(self) -> None:
         sdk = PipelineSDK()

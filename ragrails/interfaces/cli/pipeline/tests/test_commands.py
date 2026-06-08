@@ -28,30 +28,33 @@ class CliPipelineTests(unittest.TestCase):
             errors=[],
         )
 
-        with patch.object(RagRails, "ingest", return_value=expected) as ingest:
-            result = self.runner.invoke(cli, [
-                "ingest",
-                "--markdown",
-                "hello",
-                "--vector-db",
-                "qdrant",
-                "--collection",
-                "rag_chunks",
-                "--url",
-                "http://localhost:6333",
-                "--provider",
-                "voyage",
-                "--model",
-                "voyage-3",
-                "--batch-size",
-                "16",
-                "--chunk-size",
-                "500",
-                "--chunk-overlap",
-                "50",
-                "--min-chunk-length",
-                "20",
-            ])
+        with self.runner.isolated_filesystem():
+            with patch.object(RagRails, "ingest", return_value=expected) as ingest:
+                result = self.runner.invoke(cli, [
+                    "ingest",
+                    "--markdown",
+                    "hello",
+                    "--vector-db",
+                    "qdrant",
+                    "--collection",
+                    "rag_chunks",
+                    "--url",
+                    "http://localhost:6333",
+                    "--provider",
+                    "voyage",
+                    "--model",
+                    "voyage-3",
+                    "--batch-size",
+                    "16",
+                    "--chunk-size",
+                    "500",
+                    "--chunk-overlap",
+                    "50",
+                    "--min-chunk-length",
+                    "20",
+                    "--concurrency",
+                    "parallel",
+                ])
 
         self.assertEqual(result.exit_code, 0, result.output)
         ingest.assert_called_once_with(
@@ -60,44 +63,34 @@ class CliPipelineTests(unittest.TestCase):
             urls=None,
             api=None,
             chunking={"chunk_size": 500, "chunk_overlap": 50, "min_chunk_length": 20},
-            embedding={"provider": "voyage", "model": "voyage-3", "batch_size": 16},
-            storage={
-                "vector_db": "qdrant",
-                "collection": "rag_chunks",
-                "url": "http://localhost:6333",
-                "batch_size": 16,
-            },
+            embedding={"batch_size": 16},
+            storage={"batch_size": 16},
+            concurrency="parallel",
         )
         self.assertIn("Stored   : 1", result.output)
 
     def test_query_passes_pipeline_config_to_sdk(self) -> None:
         expected = RetrieveResult(query="How do payouts work?", search_query="How do payouts work?", retrieved=0, items=[], failed=0, errors=[])
 
-        with patch.object(RagRails, "query", return_value=expected) as query:
-            result = self.runner.invoke(cli, [
-                "query",
-                "How do payouts work?",
-                "--vector-db",
-                "qdrant",
-                "--collection",
-                "rag_chunks",
-                "--url",
-                "http://localhost:6333",
-                "--top-k",
-                "5",
-            ])
+        with self.runner.isolated_filesystem():
+            with patch.object(RagRails, "query", return_value=expected) as query:
+                result = self.runner.invoke(cli, [
+                    "query",
+                    "How do payouts work?",
+                    "--vector-db",
+                    "qdrant",
+                    "--collection",
+                    "rag_chunks",
+                    "--url",
+                    "http://localhost:6333",
+                    "--top-k",
+                    "5",
+                ])
 
         self.assertEqual(result.exit_code, 0, result.output)
         query.assert_called_once_with(
             "How do payouts work?",
-            embedding={"provider": "voyage", "model": "voyage-3"},
-            retrieval={
-                "vector_db": "qdrant",
-                "collection": "rag_chunks",
-                "url": "http://localhost:6333",
-                "top_k": 5,
-                "rerank": {"enabled": False},
-            },
+            retrieval={"top_k": 5, "rerank": {"enabled": False}},
         )
         self.assertIn("Results: 0", result.output)
 

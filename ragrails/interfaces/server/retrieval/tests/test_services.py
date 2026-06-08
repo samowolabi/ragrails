@@ -15,25 +15,17 @@ class ServerRetrievalServiceTests(unittest.TestCase):
             query="auth",
             search_query="auth",
             retrieved=1,
-            items=[RetrievedChunk(id="chunk-1", score=0.9, text="hello", metadata={})],
+            items=[RetrievedChunk(id="point-1", chunk_id="chunk-1", score=0.9, text="hello", metadata={})],
             failed=0,
             errors=[],
         )
-        fake_embedder = object()
-        fake_reranker = object()
-
-        with (
-            patch.object(RagRails, "embedder", return_value=fake_embedder) as embedder,
-            patch.object(RagRails, "reranker", return_value=fake_reranker) as reranker,
-            patch.object(RagRails, "retrieve", return_value=expected) as retrieve,
-        ):
+        with patch.object(RagRails, "retrieve", return_value=expected) as retrieve:
             result = retrieve_chunks(RetrieveRequest(query="auth", collection="docs", use_rerank=True))
 
-        embedder.assert_called_once_with(provider="voyage", model="voyage-3", input_type="query", options=None)
-        reranker.assert_called_once_with(provider="voyage", model="rerank-2-lite", options=None)
-        self.assertIs(retrieve.call_args.kwargs["embedder"], fake_embedder)
-        self.assertIs(retrieve.call_args.kwargs["reranker"], fake_reranker)
+        self.assertEqual(retrieve.call_args.args, ("auth",))
+        self.assertTrue(retrieve.call_args.kwargs["use_rerank"])
         self.assertEqual(result["retrieved"], 1)
+        self.assertEqual(result["items"][0]["chunk_id"], "chunk-1")
 
 
 if __name__ == "__main__":

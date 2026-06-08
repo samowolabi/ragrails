@@ -3862,6 +3862,15 @@ wheels = [
 ]
 
 [[package]]
+name = "python-multipart"
+version = "0.0.32"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/42/55c32bb9b12693c092ad250a0e82edb5b31ddeda6eb772de5f308b3804ad/python_multipart-0.0.32.tar.gz", hash = "sha256:be54b7f3fa167bb83e4fcd936b887b708f4e57fe75911c02aebf53efaf8d938e", size = 46881, upload-time = "2026-06-04T16:18:58.647Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/04/e8135ebd1ad02c56ec633277529b2602ff99ff634be76cdba5744cf554fd/python_multipart-0.0.32-py3-none-any.whl", hash = "sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23", size = 30042, upload-time = "2026-06-04T16:18:57.319Z" },
+]
+
+[[package]]
 name = "pytz"
 version = "2026.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3980,13 +3989,17 @@ name = "ragrails"
 version = "0.2.1"
 source = { editable = "." }
 dependencies = [
+    { name = "anthropic" },
     { name = "click" },
     { name = "fastapi" },
+    { name = "google-genai" },
     { name = "httpx" },
     { name = "langchain-text-splitters" },
     { name = "markitdown", extra = ["docx", "pdf"] },
+    { name = "openai" },
     { name = "pymupdf4llm" },
     { name = "python-dotenv" },
+    { name = "python-multipart" },
     { name = "uvicorn" },
 ]
 
@@ -4004,20 +4017,12 @@ all = [
     { name = "openai" },
     { name = "pinecone" },
     { name = "pymupdf4llm" },
+    { name = "python-multipart" },
     { name = "qdrant-client" },
     { name = "sentence-transformers" },
     { name = "uvicorn" },
     { name = "voyageai" },
     { name = "weaviate-client" },
-]
-anthropic = [
-    { name = "anthropic" },
-]
-google = [
-    { name = "google-genai" },
-]
-openai = [
-    { name = "openai" },
 ]
 pinecone = [
     { name = "pinecone" },
@@ -4031,25 +4036,26 @@ rerank = [
 ]
 server = [
     { name = "fastapi" },
+    { name = "python-multipart" },
     { name = "uvicorn" },
 ]
 server-pinecone = [
     { name = "fastapi" },
-    { name = "openai" },
     { name = "pinecone" },
+    { name = "python-multipart" },
     { name = "uvicorn" },
     { name = "voyageai" },
 ]
 server-qdrant = [
     { name = "fastapi" },
-    { name = "openai" },
+    { name = "python-multipart" },
     { name = "qdrant-client" },
     { name = "uvicorn" },
     { name = "voyageai" },
 ]
 server-weaviate = [
     { name = "fastapi" },
-    { name = "openai" },
+    { name = "python-multipart" },
     { name = "uvicorn" },
     { name = "voyageai" },
     { name = "weaviate-client" },
@@ -4081,8 +4087,8 @@ weaviate = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anthropic", specifier = ">=0.97.0" },
     { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.97.0" },
-    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.97.0" },
     { name = "click", specifier = ">=8.1.0" },
     { name = "click", marker = "extra == 'all'", specifier = ">=8.1.0" },
     { name = "crawl4ai", marker = "extra == 'all'", specifier = ">=0.8.6" },
@@ -4095,8 +4101,8 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'server-weaviate'", specifier = ">=0.115" },
     { name = "flagembedding", marker = "extra == 'all'", specifier = ">=1.4.0" },
     { name = "flagembedding", marker = "extra == 'rerank'", specifier = ">=1.4.0" },
+    { name = "google-genai", specifier = ">=1.0.0" },
     { name = "google-genai", marker = "extra == 'all'", specifier = ">=1.0.0" },
-    { name = "google-genai", marker = "extra == 'google'", specifier = ">=1.0.0" },
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "httpx", marker = "extra == 'all'", specifier = ">=0.27.2" },
     { name = "langchain-text-splitters", specifier = ">=1.1.2" },
@@ -4106,11 +4112,8 @@ requires-dist = [
     { name = "langchain-text-splitters", marker = "extra == 'store-weaviate'", specifier = ">=1.1.2" },
     { name = "markitdown", extras = ["docx", "pdf"], specifier = ">=0.1.5" },
     { name = "markitdown", extras = ["docx", "pdf"], marker = "extra == 'all'", specifier = ">=0.1.5" },
+    { name = "openai", specifier = ">=2.32.0" },
     { name = "openai", marker = "extra == 'all'", specifier = ">=2.32.0" },
-    { name = "openai", marker = "extra == 'openai'", specifier = ">=2.32.0" },
-    { name = "openai", marker = "extra == 'server-pinecone'", specifier = ">=2.32.0" },
-    { name = "openai", marker = "extra == 'server-qdrant'", specifier = ">=2.32.0" },
-    { name = "openai", marker = "extra == 'server-weaviate'", specifier = ">=2.32.0" },
     { name = "pinecone", marker = "extra == 'all'", specifier = ">=9.0.0" },
     { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=9.0.0" },
     { name = "pinecone", marker = "extra == 'server-pinecone'", specifier = ">=9.0.0" },
@@ -4118,6 +4121,12 @@ requires-dist = [
     { name = "pymupdf4llm", specifier = ">=1.27.2.3" },
     { name = "pymupdf4llm", marker = "extra == 'all'", specifier = ">=1.27.2.3" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "python-multipart", specifier = ">=0.0.20" },
+    { name = "python-multipart", marker = "extra == 'all'", specifier = ">=0.0.20" },
+    { name = "python-multipart", marker = "extra == 'server'", specifier = ">=0.0.20" },
+    { name = "python-multipart", marker = "extra == 'server-pinecone'", specifier = ">=0.0.20" },
+    { name = "python-multipart", marker = "extra == 'server-qdrant'", specifier = ">=0.0.20" },
+    { name = "python-multipart", marker = "extra == 'server-weaviate'", specifier = ">=0.0.20" },
     { name = "qdrant-client", marker = "extra == 'all'", specifier = ">=1.17.1" },
     { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.17.1" },
     { name = "qdrant-client", marker = "extra == 'server-qdrant'", specifier = ">=1.17.1" },
@@ -4143,7 +4152,7 @@ requires-dist = [
     { name = "weaviate-client", marker = "extra == 'store-weaviate'", specifier = ">=4.20.5" },
     { name = "weaviate-client", marker = "extra == 'weaviate'", specifier = ">=4.20.5" },
 ]
-provides-extras = ["url", "voyage", "qdrant", "pinecone", "weaviate", "server", "server-qdrant", "server-pinecone", "server-weaviate", "openai", "anthropic", "google", "rerank", "store-qdrant", "store-pinecone", "store-weaviate", "all"]
+provides-extras = ["url", "voyage", "qdrant", "pinecone", "weaviate", "server", "server-qdrant", "server-pinecone", "server-weaviate", "rerank", "store-qdrant", "store-pinecone", "store-weaviate", "all"]
 
 [[package]]
 name = "rank-bm25"

@@ -2,40 +2,49 @@
 
 Store embedded chunks in a vector database.
 
-The SDK storing interface does not read files and does not create embeddings. It
-accepts embedded chunks from `rag.embed(...)` and writes them to the configured
-vector store.
+The SDK storing interface writes embedded chunks to the configured vector store.
+Configured clients do not need repeated `vector_db`, `collection`, and `url`
+arguments.
 
 ## Basic Usage
 
 ```python
 from ragrails import RagRails
 
-rag = RagRails()
+rag = RagRails(
+    collection="docs",
+    vector_store={"provider": "qdrant", "url": "http://localhost:6333"},
+    embedding={"provider": "voyage", "model": "voyage-3"},
+)
 
 parsed = rag.parse(files=["docs/report.pdf"])
 chunks = rag.chunk(markdown=parsed.outputs)
-embedder = rag.embedder(provider="voyage", model="voyage-3")
-embedded = rag.embed(chunks=chunks.items, embedder=embedder)
+embedded = rag.embed(chunks=chunks.items)
 
 stored = rag.store(
     embedded_chunks=embedded.items,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
 )
 
 print(stored.stored)
 ```
+
+For Qdrant Cloud:
+
+```python
+rag = RagRails(
+    collection="docs",
+    vector_store={"provider": "qdrant_cloud", "url": "https://cluster.example.qdrant.io"},
+    embedding={"provider": "voyage", "model": "voyage-3"},
+)
+```
+
+Set `QDRANT_API_KEY` before running cloud-backed commands.
 
 ## API
 
 ```python
 rag.store(
     embedded_chunks=embedded.items,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
     batch_size=64,
     ensure_collection=True,
     options=None,
@@ -54,10 +63,6 @@ result = rag.edit(
             "metadata": {"title": "Report"},
         }
     ],
-    embedder=embedder,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
 )
 ```
 
@@ -66,9 +71,6 @@ Delete stored chunks by exact chunk ID:
 ```python
 result = rag.delete(
     ids=["chunk-id"],
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
 )
 ```
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+import types
 import unittest
 
 from ragrails.models.vector_db.base import Point, SearchResult, VectorStore
@@ -45,8 +47,44 @@ class VectorStoreRegistryTests(unittest.TestCase):
         providers = [info.provider for info in list_vector_stores()]
 
         self.assertIn("qdrant", providers)
+        self.assertIn("qdrant_cloud", providers)
         self.assertIn("pinecone", providers)
         self.assertIn("weaviate", providers)
+
+    def test_qdrant_cloud_uses_qdrant_adapter_with_cloud_provider(self) -> None:
+        qdrant_client = types.ModuleType("qdrant_client")
+        qdrant_models = types.ModuleType("qdrant_client.models")
+        qdrant_client.QdrantClient = object
+        qdrant_models.Distance = types.SimpleNamespace(COSINE="Cosine")
+        qdrant_models.PointIdsList = object
+        qdrant_models.PointStruct = object
+        qdrant_models.VectorParams = object
+
+        original_client = sys.modules.get("qdrant_client")
+        original_models = sys.modules.get("qdrant_client.models")
+        try:
+            sys.modules["qdrant_client"] = qdrant_client
+            sys.modules["qdrant_client.models"] = qdrant_models
+            store = create_vector_store(
+                "qdrant_cloud",
+                url="https://cluster.example.qdrant.io",
+                collection="docs",
+                api_key="secret",
+            )
+        finally:
+            if original_client is None:
+                sys.modules.pop("qdrant_client", None)
+            else:
+                sys.modules["qdrant_client"] = original_client
+            if original_models is None:
+                sys.modules.pop("qdrant_client.models", None)
+            else:
+                sys.modules["qdrant_client.models"] = original_models
+
+        self.assertEqual(store.provider, "qdrant_cloud")
+        self.assertEqual(store.url, "https://cluster.example.qdrant.io")
+        self.assertEqual(store.collection, "docs")
+        self.assertEqual(store.api_key, "secret")
 
     def test_registers_custom_vector_store_provider(self) -> None:
         register_vector_store(
@@ -102,7 +140,7 @@ class VectorStoreRegistryTests(unittest.TestCase):
             register_vector_store("fake", FakeVectorStore, default_collection="fake_chunks")
 
     def test_unknown_provider_error_lists_available_providers(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Available providers: pinecone, qdrant, weaviate"):
+        with self.assertRaisesRegex(ValueError, "Available providers: pinecone, qdrant, qdrant_cloud, weaviate"):
             create_vector_store("missing")
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import click
 
+from ragrails.interfaces.cli.config import configured_value
 from ragrails.interfaces.cli.common import exit_with_error, load_json_dir, print_errors, save_json
 from ragrails.interfaces.sdk import RagRails
 
@@ -14,17 +15,20 @@ from ragrails.interfaces.sdk import RagRails
 @click.option("--provider", default="voyage", show_default=True, help="Embedding provider.")
 @click.option("--model", default="voyage-3", show_default=True, help="Embedding model name.")
 @click.option("--batch-size", default=64, show_default=True, help="Chunks per embedding request.")
-def embed(input_dir, output_dir, provider, model, batch_size):
+@click.pass_context
+def embed(ctx, input_dir, output_dir, provider, model, batch_size):
     """Embed chunk JSON files and write vectors to an output directory."""
+    provider = configured_value(ctx, "provider", provider, section="embedding", key="provider", default="voyage")
+    model = configured_value(ctx, "model", model, section="embedding", key="model", default="voyage-3")
+    batch_size = configured_value(ctx, "batch_size", batch_size, section="embedding", key="batch_size", default=64)
     chunks = load_json_dir(input_dir)
     if not chunks:
         raise click.UsageError(f"No JSON files found in {input_dir}")
 
-    rag = RagRails()
-    embedder = rag.embedder(provider=provider, model=model, input_type="document")
+    rag = RagRails(embedding={"provider": provider, "model": model})
 
     try:
-        result = rag.embed(chunks=chunks, embedder=embedder, batch_size=batch_size)
+        result = rag.embed(chunks=chunks, batch_size=batch_size)
     except Exception as e:
         exit_with_error(e)
 

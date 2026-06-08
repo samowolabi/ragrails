@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
+from ragrails.interfaces.cli.config import save_config
 from ragrails.interfaces.cli.main import cli
 from ragrails.interfaces.sdk import RagRails
 from ragrails.types import ChatResult
@@ -26,15 +27,8 @@ class CliChatTests(unittest.TestCase):
             retrieval_quality={},
             answer_confidence={},
         )
-        fake_llm = object()
-        fake_embedder = object()
-
         with self.runner.isolated_filesystem():
-            with (
-                patch.object(RagRails, "llm", return_value=fake_llm) as llm,
-                patch.object(RagRails, "embedder", return_value=fake_embedder) as embedder,
-                patch.object(RagRails, "chat", return_value=expected) as chat,
-            ):
+            with patch.object(RagRails, "chat", return_value=expected) as chat:
                 result = self.runner.invoke(cli, [
                     "chat",
                     "How do payouts work?",
@@ -67,15 +61,8 @@ class CliChatTests(unittest.TestCase):
                 saved_history = json.load(file)
 
         self.assertEqual(result.exit_code, 0, result.output)
-        llm.assert_called_once_with(provider="openai", model="gpt-4o-mini", max_tokens=512)
-        embedder.assert_called_once_with(provider="voyage", model="voyage-3", input_type="query")
         call = chat.call_args.kwargs
         self.assertEqual(chat.call_args.args, ("How do payouts work?",))
-        self.assertIs(call["llm"], fake_llm)
-        self.assertIs(call["embedder"], fake_embedder)
-        self.assertEqual(call["vector_db"], "qdrant")
-        self.assertEqual(call["collection"], "rag_chunks")
-        self.assertEqual(call["url"], "http://localhost:6333")
         self.assertTrue(call["query_rewrite"].enabled)
         self.assertEqual(call["query_rewrite"].session_context, "Payment docs")
         self.assertFalse(call["intent_routing"].enabled)
@@ -95,33 +82,56 @@ class CliChatTests(unittest.TestCase):
             retrieval_quality={},
             answer_confidence={},
         )
-        fake_llm = object()
-        fake_embedder = object()
-        fake_reranker = object()
-
-        with (
-            patch.object(RagRails, "llm", return_value=fake_llm),
-            patch.object(RagRails, "embedder", return_value=fake_embedder),
-            patch.object(RagRails, "reranker", return_value=fake_reranker) as reranker,
-            patch.object(RagRails, "chat", return_value=expected) as chat,
-        ):
-            result = self.runner.invoke(cli, [
-                "chat",
-                "How do payouts work?",
-                "--rerank",
-                "--reranker",
-                "voyage",
-                "--reranker-model",
-                "rerank-2-lite",
-                "--rerank-top-k",
-                "3",
-            ])
+        with self.runner.isolated_filesystem():
+            with patch.object(RagRails, "chat", return_value=expected) as chat:
+                result = self.runner.invoke(cli, [
+                    "chat",
+                    "How do payouts work?",
+                    "--rerank",
+                    "--reranker",
+                    "voyage",
+                    "--reranker-model",
+                    "rerank-2-lite",
+                    "--rerank-top-k",
+                    "3",
+                ])
 
         self.assertEqual(result.exit_code, 0, result.output)
-        reranker.assert_called_once_with(provider="voyage", model="rerank-2-lite")
-        self.assertIs(chat.call_args.kwargs["reranker"], fake_reranker)
         self.assertTrue(chat.call_args.kwargs["retrieval_config"].use_rerank)
         self.assertEqual(chat.call_args.kwargs["retrieval_config"].rerank_top_k, 3)
+
+    def test_chat_uses_advanced_chat_defaults(self) -> None:
+        expected = ChatResult(
+            answer="Payouts run daily.",
+            sources=[],
+            history=[],
+            retrieval={},
+            llm={},
+            errors=[],
+            retrieval_quality={},
+            answer_confidence={},
+        )
+
+        with self.runner.isolated_filesystem():
+            save_config({
+                "chat": {
+                    "query_rewrite": True,
+                    "intent_routing": False,
+                    "history_compaction": False,
+                },
+                "retrieval": {"rerank_top_k": 4},
+                "reranker": {"enabled": True, "provider": "voyage", "model": "rerank-2-lite"},
+            })
+            with patch.object(RagRails, "chat", return_value=expected) as chat:
+                result = self.runner.invoke(cli, ["chat", "How do payouts work?"])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        call = chat.call_args.kwargs
+        self.assertTrue(call["query_rewrite"].enabled)
+        self.assertFalse(call["intent_routing"].enabled)
+        self.assertFalse(call["history_compaction"].enabled)
+        self.assertTrue(call["retrieval_config"].use_rerank)
+        self.assertEqual(call["retrieval_config"].rerank_top_k, 4)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,14 @@ from .schemas import DeleteRequest, EditRequest, StoreRequest
 
 
 def store_chunks(request: StoreRequest) -> dict[str, Any]:
-    return result_data(RagRails().store(**model_data(request)))
+    data = model_data(request)
+    embedded_chunks = data.pop("embedded_chunks")
+    vector_db = data.pop("vector_db")
+    collection = data.pop("collection")
+    url = data.pop("url")
+    options = data.pop("options")
+    rag = RagRails(collection=collection, vector_store={"provider": vector_db, "url": url, "options": options})
+    return result_data(rag.store(embedded_chunks=embedded_chunks, **data))
 
 
 def edit_chunks(request: EditRequest) -> dict[str, Any]:
@@ -20,9 +27,24 @@ def edit_chunks(request: EditRequest) -> dict[str, Any]:
     provider = data.pop("provider")
     model = data.pop("model")
     embedder_options = data.pop("embedder_options")
-    embedder = RagRails().embedder(provider=provider, model=model, input_type="document", options=embedder_options)
-    return result_data(RagRails().edit(chunks=chunks, embedder=embedder, **data))
+    vector_db = data.pop("vector_db")
+    collection = data.pop("collection")
+    url = data.pop("url")
+    options = data.pop("options")
+    rag = RagRails(
+        collection=collection,
+        vector_store={"provider": vector_db, "url": url, "options": options},
+        embedding={"provider": provider, "model": model, "options": embedder_options},
+    )
+    return result_data(rag.edit(chunks=chunks, **data))
 
 
 def delete_chunks(request: DeleteRequest) -> dict[str, Any]:
-    return result_data(RagRails().delete(**model_data(request)))
+    data = model_data(request)
+    ids = data.pop("ids")
+    vector_db = data.pop("vector_db")
+    collection = data.pop("collection")
+    url = data.pop("url")
+    options = data.pop("options")
+    rag = RagRails(collection=collection, vector_store={"provider": vector_db, "url": url, "options": options})
+    return result_data(rag.delete(ids=ids))

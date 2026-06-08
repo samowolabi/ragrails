@@ -16,11 +16,23 @@ def retrieve_chunks(request: RetrieveRequest) -> dict[str, Any]:
     provider = data.pop("provider")
     model = data.pop("model")
     embedder_options = data.pop("embedder_options")
+    vector_db = data.pop("vector_db")
+    collection = data.pop("collection")
+    url = data.pop("url")
+    options = data.pop("options")
     reranker_provider = data.pop("reranker")
     reranker_model = data.pop("reranker_model")
     reranker_options = data.pop("reranker_options")
     use_rerank = data.get("use_rerank", False)
-    rag = RagRails()
-    embedder = rag.embedder(provider=provider, model=model, input_type="query", options=embedder_options)
-    reranker = rag.reranker(provider=reranker_provider, model=reranker_model, options=reranker_options) if use_rerank else None
-    return result_data(RagRails().retrieve(query, embedder=embedder, reranker=reranker, **data))
+    rag = RagRails(
+        collection=collection,
+        vector_store={"provider": vector_db, "url": url, "options": options},
+        embedding={"provider": provider, "model": model, "options": embedder_options},
+        reranker={
+            "enabled": use_rerank,
+            "provider": reranker_provider,
+            "model": reranker_model,
+            "options": reranker_options,
+        },
+    )
+    return result_data(rag.retrieve(query, **data))

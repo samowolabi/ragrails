@@ -9,15 +9,17 @@ The SDK embedding interface does not read chunk files and does not write to a ve
 ```python
 from ragrails import RagRails
 
-rag = RagRails()
+rag = RagRails(
+    collection="docs",
+    vector_store={"provider": "qdrant", "url": "http://localhost:6333"},
+    embedding={"provider": "voyage", "model": "voyage-3"},
+)
 
 parsed = rag.parse(files=["docs/report.pdf"])
 chunks = rag.chunk(markdown=parsed.outputs)
-embedder = rag.embedder(provider="voyage", model="voyage-3")
 
 embedded = rag.embed(
     chunks=chunks.items,
-    embedder=embedder,
     batch_size=64,
 )
 
@@ -51,25 +53,5 @@ EmbedResult(
 ```python
 stored = rag.store(
     embedded_chunks=embedded.items,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
-)
-```
-
-## API
-
-```python
-embedder = rag.embedder(
-    provider="voyage",
-    model="voyage-3",
-    input_type="document",
-    options=None,
-)
-
-rag.embed(
-    chunks=chunks.items,
-    embedder=embedder,
-    batch_size=64,
 )
 ```

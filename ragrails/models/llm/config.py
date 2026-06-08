@@ -39,5 +39,5 @@ def create_llm(config: LLMConfig) -> LLMProvider:
         return PROVIDERS[resolved_provider].create(model=model, max_tokens=config.max_tokens)
     except ImportError as exc:
         raise RuntimeError(
-            f'LLM provider {resolved_provider!r} requires: pip install "ragrails[{resolved_provider}]"'
+            f"LLM provider {resolved_provider!r} dependencies are missing. Reinstall or upgrade ragrails."
         ) from exc

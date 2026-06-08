@@ -5,6 +5,7 @@ from pathlib import Path
 
 import click
 
+from ragrails.interfaces.cli.config import configured_value
 from ragrails.interfaces.cli.common import exit_with_error, print_errors
 from ragrails.interfaces.sdk import RagRails
 from ragrails.interfaces.sdk.chat import HistoryCompactionConfig, IntentRoutingConfig, QueryRewriteConfig
@@ -17,20 +18,22 @@ from ragrails.interfaces.sdk.chat import HistoryCompactionConfig, IntentRoutingC
 @click.option("--max-tokens", default=1024, show_default=True, help="LLM max output tokens.")
 @click.option("--embedder-provider", default="voyage", show_default=True, help="Query embedding provider.")
 @click.option("--embedder-model", default="voyage-3", show_default=True, help="Query embedding model.")
-@click.option("--vector-db", default="qdrant", show_default=True, type=click.Choice(["qdrant", "pinecone", "weaviate"]), help="Vector database provider.")
+@click.option("--vector-db", default="qdrant", show_default=True, type=click.Choice(["qdrant", "qdrant_cloud", "pinecone", "weaviate"]), help="Vector database provider.")
 @click.option("--collection", default=None, help="Collection, index, or class name.")
 @click.option("--url", default=None, help="Vector database URL.")
 @click.option("--persona", default="", help="System persona or domain instruction for the chat turn.")
 @click.option("--history-file", default=None, help="JSON file containing prior chat history. Updated after the turn.")
-@click.option("--rewrite-query", is_flag=True, help="Rewrite follow-up questions before retrieval.")
+@click.option("--rewrite-query/--no-rewrite-query", default=False, help="Rewrite follow-up questions before retrieval.")
 @click.option("--rewrite-session-context", default="", help="Session context for query rewrite.")
-@click.option("--disable-intent-routing", is_flag=True, help="Always run retrieval, including small-talk queries.")
-@click.option("--disable-history-compaction", is_flag=True, help="Return full history without SDK compaction.")
-@click.option("--rerank", is_flag=True, help="Rerank retrieved chunks before answer generation.")
+@click.option("--intent-routing/--disable-intent-routing", default=True, help="Route small-talk directly to the LLM.")
+@click.option("--history-compaction/--disable-history-compaction", default=True, help="Compact long chat history.")
+@click.option("--rerank/--no-rerank", default=False, help="Rerank retrieved chunks before answer generation.")
 @click.option("--reranker", default="voyage", show_default=True, help="Reranker provider.")
 @click.option("--reranker-model", default="rerank-2-lite", show_default=True, help="Reranker model.")
 @click.option("--rerank-top-k", default=5, show_default=True, help="Number of reranked chunks to keep.")
+@click.pass_context
 def chat_command(
+    ctx,
     query,
     llm_provider,
     llm_model,
@@ -44,8 +47,8 @@ def chat_command(
     history_file,
     rewrite_query,
     rewrite_session_context,
-    disable_intent_routing,
-    disable_history_compaction,
+    intent_routing,
+    history_compaction,
     rerank,
     reranker,
     reranker_model,
@@ -58,14 +61,31 @@ def chat_command(
         main()
         return
 
+    llm_provider = configured_value(ctx, "llm_provider", llm_provider, section="llm", key="provider", default="openai")
+    llm_model = configured_value(ctx, "llm_model", llm_model, section="llm", key="model", default="gpt-4o-mini")
+    max_tokens = configured_value(ctx, "max_tokens", max_tokens, section="llm", key="max_tokens", default=1024)
+    embedder_provider = configured_value(ctx, "embedder_provider", embedder_provider, section="embedding", key="provider", default="voyage")
+    embedder_model = configured_value(ctx, "embedder_model", embedder_model, section="embedding", key="model", default="voyage-3")
+    vector_db = configured_value(ctx, "vector_db", vector_db, section="vector_store", key="provider", default="qdrant")
+    collection = configured_value(ctx, "collection", collection, section="vector_store", key="collection")
+    url = configured_value(ctx, "url", url, section="vector_store", key="url")
+    rerank = configured_value(ctx, "rerank", rerank, section="reranker", key="enabled", default=False)
+    reranker = configured_value(ctx, "reranker", reranker, section="reranker", key="provider", default="voyage")
+    reranker_model = configured_value(ctx, "reranker_model", reranker_model, section="reranker", key="model", default="rerank-2-lite")
+    rerank_top_k = configured_value(ctx, "rerank_top_k", rerank_top_k, section="retrieval", key="rerank_top_k", default=5)
+    rewrite_query = configured_value(ctx, "rewrite_query", rewrite_query, section="chat", key="query_rewrite", default=False)
+    intent_routing = configured_value(ctx, "intent_routing", intent_routing, section="chat", key="intent_routing", default=True)
+    history_compaction = configured_value(ctx, "history_compaction", history_compaction, section="chat", key="history_compaction", default=True)
     history = _load_history(history_file)
-    rag = RagRails()
+    rag = RagRails(
+        collection=collection,
+        vector_store={"provider": vector_db, "url": url},
+        embedding={"provider": embedder_provider, "model": embedder_model},
+        llm={"provider": llm_provider, "model": llm_model, "max_tokens": max_tokens},
+        reranker={"enabled": rerank, "provider": reranker, "model": reranker_model},
+    )
 
     try:
-        llm = rag.llm(provider=llm_provider, model=llm_model, max_tokens=max_tokens)
-        embedder = rag.embedder(provider=embedder_provider, model=embedder_model, input_type="query")
-        reranker_obj = rag.reranker(provider=reranker, model=reranker_model) if rerank else None
-
         retrieval_config = None
         if rerank:
             from ragrails.core.stg_05_retriever import RetrieverConfig
@@ -77,19 +97,13 @@ def chat_command(
 
         result = rag.chat(
             query,
-            llm=llm,
-            embedder=embedder,
-            vector_db=vector_db,
-            collection=collection,
-            url=url,
-            reranker=reranker_obj,
             history=history,
-            history_compaction=HistoryCompactionConfig(enabled=not disable_history_compaction),
+            history_compaction=HistoryCompactionConfig(enabled=history_compaction),
             query_rewrite=QueryRewriteConfig(
                 enabled=rewrite_query,
                 session_context=rewrite_session_context,
             ),
-            intent_routing=IntentRoutingConfig(enabled=not disable_intent_routing),
+            intent_routing=IntentRoutingConfig(enabled=intent_routing),
             persona=persona,
             retrieval_config=retrieval_config,
         )

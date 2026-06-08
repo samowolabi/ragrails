@@ -26,6 +26,14 @@ VECTOR_STORE_SPECS: dict[str, _VectorStoreSpec] = {
         ),
         factory="ragrails.models.vector_db.qdrant:QdrantStore",
     ),
+    "qdrant_cloud": _VectorStoreSpec(
+        info=VectorStoreInfo(
+            provider="qdrant_cloud",
+            default_url="",
+            default_collection="rag_chunks",
+        ),
+        factory=lambda **kwargs: _qdrant_cloud_store(**kwargs),
+    ),
     "pinecone": _VectorStoreSpec(
         info=VectorStoreInfo(
             provider="pinecone",
@@ -102,3 +110,9 @@ def _load_factory(factory: object) -> VectorStoreFactory:
     module_name, class_name = factory.split(":", 1)
     module = import_module(module_name)
     return getattr(module, class_name)
+
+
+def _qdrant_cloud_store(**kwargs) -> VectorStore:
+    from .qdrant import QdrantStore
+
+    return QdrantStore(provider="qdrant_cloud", **kwargs)

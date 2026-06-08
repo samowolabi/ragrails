@@ -5,6 +5,26 @@ Run stateless RAG chat over a stored retrieval index.
 Chat does not keep hidden state. Pass `history` explicitly and store the returned
 `result.history` in your application session.
 
+## LLM Providers
+
+OpenAI, Anthropic, and Google Gemini SDKs are included in the base Ragrails
+install. Use API keys for the provider you select:
+
+```bash
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+GEMINI_API_KEY=...
+```
+
+```python
+rag.llm(provider="openai", model="gpt-5.5")
+rag.llm(provider="anthropic", model="claude-opus-4-8")
+rag.llm(provider="google", model="gemini-3-pro")
+```
+
+Unknown model names are allowed when `provider` is explicit, so new provider
+models can be used before the local pricing catalog is updated.
+
 ## Basic Usage
 
 ```python
@@ -16,20 +36,18 @@ from ragrails import (
     RagRails,
 )
 
-rag = RagRails()
-
-llm = rag.llm(provider="openai", model="gpt-4o-mini")
-query_embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
+rag = RagRails(
+    collection="docs",
+    vector_store={"provider": "qdrant", "url": "http://localhost:6333"},
+    embedding={"provider": "voyage", "model": "voyage-3"},
+    llm={"provider": "openai", "model": "gpt-5.5"},
+    reranker={"enabled": True, "provider": "voyage", "model": "rerank-2-lite"},
+)
 
 history = []
 
 result = rag.chat(
     "How do I authenticate?",
-    llm=llm,
-    embedder=query_embedder,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
     history=history,
 )
 
@@ -81,8 +99,6 @@ quality = ChatRetrievalQualityConfig(
 
 result = rag.chat(
     "How do I authenticate?",
-    llm=llm,
-    embedder=query_embedder,
     retrieval_quality=quality,
 )
 ```
@@ -123,8 +139,6 @@ history_config = HistoryCompactionConfig(
 
 result = rag.chat(
     "Continue",
-    llm=llm,
-    embedder=query_embedder,
     history=history,
     history_compaction=history_config,
 )
@@ -137,8 +151,6 @@ Disable compaction:
 ```python
 rag.chat(
     "Continue",
-    llm=llm,
-    embedder=query_embedder,
     history=history,
     history_compaction=HistoryCompactionConfig(enabled=False),
 )
@@ -153,13 +165,10 @@ conversation context.
 rewrite = QueryRewriteConfig(
     enabled=True,
     session_context="User is asking about authentication",
-    llm=rewrite_llm,  # optional; defaults to the chat llm
 )
 
 result = rag.chat(
     "How do I do it?",
-    llm=llm,
-    embedder=query_embedder,
     history=history,
     persona="Product knowledge base",
     query_rewrite=rewrite,
@@ -187,8 +196,6 @@ Disable intent routing:
 ```python
 rag.chat(
     "hello",
-    llm=llm,
-    embedder=query_embedder,
     intent_routing=IntentRoutingConfig(enabled=False),
 )
 ```

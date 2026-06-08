@@ -9,13 +9,34 @@ from ragrails.interfaces.sdk import RagRails
 
 
 @click.command("setup-url")
-@click.option("--browser", default="chromium", show_default=True, help="Playwright browser to install.")
-def setup_url(browser):
+@click.option("--browser", default=None, type=click.Choice(["chromium", "firefox", "webkit"]), help="Playwright browser to install.")
+@click.option("--verbose", is_flag=True, help="Show the underlying Playwright install command.")
+def setup_url(browser, verbose):
     """Install the Playwright browser required for URL ingestion."""
+    click.secho("URL ingestion setup", fg="cyan", bold=True)
+    click.echo("Prepare browser support for URL scraping.")
+    click.echo()
+    if browser is None:
+        browser = click.prompt(
+            "Browser",
+            type=click.Choice(["chromium", "firefox", "webkit"], case_sensitive=False),
+            default="chromium",
+            show_choices=True,
+        ).lower()
+
+    click.echo()
+    click.echo(f"Installing {browser}...")
     try:
-        RagRails().setup_url(browser=browser)
+        result = RagRails().setup_url(browser=browser)
     except Exception as e:
         exit_with_error(e)
+    click.secho(f"Ready. URL scraping can now use {browser}.", fg="green")
+    command = result.get("command") if isinstance(result, dict) else None
+    if verbose and command:
+        click.echo(f"Command: {' '.join(command)}")
+    click.echo()
+    click.secho("Next", fg="bright_blue", bold=True)
+    click.echo("  ragrails scrape https://example.com/docs --output-dir files/output/web")
 
 
 @click.command()

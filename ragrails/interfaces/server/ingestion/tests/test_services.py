@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from ragrails.interfaces.server.ingestion.schemas import ApiIngestRequest, DocsIngestRequest, UrlIngestRequest
-from ragrails.interfaces.server.ingestion.services import fetch_api, parse_docs, scrape_url
+from ragrails.interfaces.server.ingestion.services import fetch_api, parse_docs, parse_uploaded_docs, scrape_url
 from ragrails.interfaces.sdk import RagRails
 from ragrails.types import ApiIngestResult, ParseResult, ScrapeResult
 
@@ -40,6 +40,23 @@ class ServerIngestionServiceTests(unittest.TestCase):
 
         parse.assert_called_once()
         self.assertEqual(parse.call_args.kwargs["files"], [{"path": "docs/guide.md", "content": None, "filename": None, "title": "Guide", "description": None}])
+        self.assertEqual(result["documents"], 1)
+
+    def test_parse_uploaded_docs_calls_sdk_with_byte_documents(self) -> None:
+        expected = ParseResult(documents=1, failed=0, outputs=[{"text": "ok"}], errors=[])
+        files = [{
+            "content": b"# Guide\n",
+            "filename": "guide.md",
+            "title": "Guide",
+            "description": "Uploaded guide",
+            "content_type": "text/markdown",
+            "source": "guide.md",
+        }]
+
+        with patch.object(RagRails, "parse", return_value=expected) as parse:
+            result = parse_uploaded_docs(files, frontmatter=True)
+
+        parse.assert_called_once_with(files=files, frontmatter=True)
         self.assertEqual(result["documents"], 1)
 
 

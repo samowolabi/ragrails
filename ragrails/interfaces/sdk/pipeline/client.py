@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+from ragrails.interfaces.sdk.shared import configured, configured_object
 from ragrails.types import IngestPipelineResult, RetrieveResult
 
 
@@ -19,6 +21,7 @@ class PipelineMixin:
         chunking: dict[str, Any] | None = None,
         embedding: dict[str, Any] | None = None,
         storage: dict[str, Any] | None = None,
+        concurrency: str = "serial",
     ) -> IngestPipelineResult:
         """Run source ingestion, chunking, embedding, and vector storage."""
         self._validate_pipeline_config(
@@ -26,6 +29,7 @@ class PipelineMixin:
             chunking=chunking,
             embedding=embedding,
             storage=storage,
+            concurrency=concurrency,
         )
         if all(source is None for source in (docs, urls, api, markdown)):
             raise ValueError("Provide at least one source: docs, urls, api, or markdown")
@@ -34,23 +38,20 @@ class PipelineMixin:
         documents: list[dict[str, Any]] = []
         errors: list[dict] = []
 
-        if docs is not None:
-            result = self._pipeline_parse(docs, ingestion)
-            source_results["docs"] = result
-            documents.extend(result.outputs)
-            errors.extend(self._tag_pipeline_errors("docs", result.errors))
-
-        if urls is not None:
-            result = self._pipeline_scrape(urls, ingestion)
-            source_results["urls"] = result
-            documents.extend(result.outputs)
-            errors.extend(self._tag_pipeline_errors("urls", result.errors))
-
-        if api is not None:
-            result = self._pipeline_fetch(api, ingestion)
-            source_results["api"] = result
-            documents.extend(result.outputs)
-            errors.extend(self._tag_pipeline_errors("api", result.errors))
+        if concurrency == "parallel":
+            source_results, documents, errors = self._run_ingestion_sources_parallel(
+                docs=docs,
+                urls=urls,
+                api=api,
+                ingestion=ingestion,
+            )
+        else:
+            source_results, documents, errors = self._run_ingestion_sources_serial(
+                docs=docs,
+                urls=urls,
+                api=api,
+                ingestion=ingestion,
+            )
 
         if markdown is not None:
             markdown_docs = self._pipeline_markdown_documents(markdown)
@@ -138,6 +139,11 @@ class PipelineMixin:
                 retrieval_config["reranker"] = rerank["reranker"]
             if "top_k" in rerank:
                 retrieval_config["rerank_top_k"] = rerank["top_k"]
+        else:
+            reranker_defaults = configured(self, "reranker")
+            if reranker_defaults.get("enabled") is True:
+                retrieval_config["use_rerank"] = True
+                retrieval_config["reranker"] = configured_object(self, "reranker", lambda _: self.reranker())
 
         embedder = self.embedder(**embedding_config)
         return self.retrieve(query, embedder=embedder, **retrieval_config)
@@ -165,6 +171,69 @@ class PipelineMixin:
             return self.fetch(apis=api, **config)
         return self.fetch(url=api, **config)
 
+    def _run_ingestion_sources_serial(
+        self,
+        *,
+        docs,
+        urls,
+        api,
+        ingestion: dict[str, Any] | None,
+    ) -> tuple[dict[str, object], list[dict[str, Any]], list[dict]]:
+        source_results: dict[str, object] = {}
+        documents: list[dict[str, Any]] = []
+        errors: list[dict] = []
+
+        for stage, source, runner in (
+            ("docs", docs, self._pipeline_parse),
+            ("urls", urls, self._pipeline_scrape),
+            ("api", api, self._pipeline_fetch),
+        ):
+            if source is None:
+                continue
+            result = runner(source, ingestion)
+            source_results[stage] = result
+            documents.extend(result.outputs)
+            errors.extend(self._tag_pipeline_errors(stage, result.errors))
+
+        return source_results, documents, errors
+
+    def _run_ingestion_sources_parallel(
+        self,
+        *,
+        docs,
+        urls,
+        api,
+        ingestion: dict[str, Any] | None,
+    ) -> tuple[dict[str, object], list[dict[str, Any]], list[dict]]:
+        tasks = [
+            (stage, source, runner)
+            for stage, source, runner in (
+                ("docs", docs, self._pipeline_parse),
+                ("urls", urls, self._pipeline_scrape),
+                ("api", api, self._pipeline_fetch),
+            )
+            if source is not None
+        ]
+        if not tasks:
+            return {}, [], []
+
+        source_results: dict[str, object] = {}
+        documents: list[dict[str, Any]] = []
+        errors: list[dict] = []
+
+        with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+            futures = {
+                stage: executor.submit(runner, source, ingestion)
+                for stage, source, runner in tasks
+            }
+            for stage, _, _ in tasks:
+                result = futures[stage].result()
+                source_results[stage] = result
+                documents.extend(result.outputs)
+                errors.extend(self._tag_pipeline_errors(stage, result.errors))
+
+        return source_results, documents, errors
+
     @staticmethod
     def _stage_config(config: dict[str, Any] | None, stage: str) -> dict[str, Any]:
         if not config:
@@ -189,7 +258,10 @@ class PipelineMixin:
         chunking: dict[str, Any] | None,
         embedding: dict[str, Any] | None,
         storage: dict[str, Any] | None,
+        concurrency: str,
     ) -> None:
+        if concurrency not in {"serial", "parallel"}:
+            raise ValueError("concurrency must be 'serial' or 'parallel'")
         for name, value in {
             "ingestion": ingestion,
             "chunking": chunking,

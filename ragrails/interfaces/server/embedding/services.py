@@ -14,5 +14,6 @@ def embed_chunks(request: EmbedRequest) -> dict[str, Any]:
     data = model_data(request)
     chunks = data.pop("chunks")
     batch_size = data.pop("batch_size")
-    embedder = RagRails().embedder(**data)
-    return result_data(RagRails().embed(chunks=chunks, embedder=embedder, batch_size=batch_size))
+    input_type = data.pop("input_type")
+    rag = RagRails(embedding=data)
+    return result_data(rag.embed(chunks=chunks, input_type=input_type, batch_size=batch_size))

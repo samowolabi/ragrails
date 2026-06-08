@@ -188,6 +188,7 @@ class RetrieverCoreTests(unittest.TestCase):
         self.assertEqual(result["failed"], 0)
         self.assertNotIn("reranked", result)
         self.assertEqual([item.id for item in result["outputs"]], ["a", "b"])
+        self.assertEqual([item.chunk_id for item in result["outputs"]], ["a", "b"])
         self.assertEqual([item.rerank_score for item in result["outputs"]], [None, None])
 
     def test_run_retrieval_can_enable_reranking_from_core_config(self) -> None:

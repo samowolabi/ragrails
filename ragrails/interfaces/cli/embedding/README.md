@@ -6,7 +6,7 @@ Command for embedding chunk JSON and writing embedded chunk JSON.
 
 | Command | SDK methods | Purpose |
 |---|---|---|
-| `embed` | `RagRails().embedder()`, `RagRails().embed()` | Create vectors for chunk dictionaries. |
+| `embed` | `RagRails(...).embed()` | Create vectors for chunk dictionaries. |
 
 ## Example
 

@@ -1,12 +1,105 @@
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 import types
 import unittest
 
 
 class VectorStoreLifecycleAdapterTests(unittest.TestCase):
+    def test_qdrant_client_receives_explicit_api_key(self) -> None:
+        qdrant_client = types.ModuleType("qdrant_client")
+        qdrant_models = types.ModuleType("qdrant_client.models")
+        created = []
+
+        class FakeQdrantClient:
+            def __init__(self, **kwargs):
+                created.append(kwargs)
+
+        class FakePointIdsList:
+            pass
+
+        class FakePointStruct:
+            pass
+
+        class FakeVectorParams:
+            pass
+
+        class FakeDistance:
+            COSINE = "Cosine"
+
+        qdrant_client.QdrantClient = FakeQdrantClient
+        qdrant_models.Distance = FakeDistance
+        qdrant_models.PointIdsList = FakePointIdsList
+        qdrant_models.PointStruct = FakePointStruct
+        qdrant_models.VectorParams = FakeVectorParams
+
+        original_client = sys.modules.get("qdrant_client")
+        original_models = sys.modules.get("qdrant_client.models")
+        try:
+            sys.modules["qdrant_client"] = qdrant_client
+            sys.modules["qdrant_client.models"] = qdrant_models
+            module = importlib.import_module("ragrails.models.vector_db.qdrant")
+            module = importlib.reload(module)
+
+            store = module.QdrantStore(url="https://cluster.example.qdrant.io", api_key="secret")
+            store._get_client()
+
+            self.assertEqual(created, [{"url": "https://cluster.example.qdrant.io", "api_key": "secret"}])
+        finally:
+            if original_client is None:
+                sys.modules.pop("qdrant_client", None)
+            else:
+                sys.modules["qdrant_client"] = original_client
+            if original_models is None:
+                sys.modules.pop("qdrant_client.models", None)
+            else:
+                sys.modules["qdrant_client.models"] = original_models
+
+    def test_qdrant_client_reads_api_key_from_environment(self) -> None:
+        qdrant_client = types.ModuleType("qdrant_client")
+        qdrant_models = types.ModuleType("qdrant_client.models")
+        created = []
+
+        class FakeQdrantClient:
+            def __init__(self, **kwargs):
+                created.append(kwargs)
+
+        qdrant_client.QdrantClient = FakeQdrantClient
+        qdrant_models.Distance = types.SimpleNamespace(COSINE="Cosine")
+        qdrant_models.PointIdsList = object
+        qdrant_models.PointStruct = object
+        qdrant_models.VectorParams = object
+
+        original_client = sys.modules.get("qdrant_client")
+        original_models = sys.modules.get("qdrant_client.models")
+        original_key = os.environ.get("QDRANT_API_KEY")
+        try:
+            os.environ["QDRANT_API_KEY"] = "env-secret"
+            sys.modules["qdrant_client"] = qdrant_client
+            sys.modules["qdrant_client.models"] = qdrant_models
+            module = importlib.import_module("ragrails.models.vector_db.qdrant")
+            module = importlib.reload(module)
+
+            store = module.QdrantStore(url="https://cluster.example.qdrant.io")
+            store._get_client()
+
+            self.assertEqual(created, [{"url": "https://cluster.example.qdrant.io", "api_key": "env-secret"}])
+        finally:
+            if original_key is None:
+                os.environ.pop("QDRANT_API_KEY", None)
+            else:
+                os.environ["QDRANT_API_KEY"] = original_key
+            if original_client is None:
+                sys.modules.pop("qdrant_client", None)
+            else:
+                sys.modules["qdrant_client"] = original_client
+            if original_models is None:
+                sys.modules.pop("qdrant_client.models", None)
+            else:
+                sys.modules["qdrant_client.models"] = original_models
+
     def test_qdrant_delete_uses_point_ids(self) -> None:
         qdrant_client = types.ModuleType("qdrant_client")
         qdrant_models = types.ModuleType("qdrant_client.models")

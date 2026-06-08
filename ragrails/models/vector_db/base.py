@@ -17,6 +17,10 @@ class SearchResult:
     metadata: dict = field(default_factory=dict)
     rerank_score: float | None = None
 
+    @property
+    def chunk_id(self) -> str:
+        return str(self.metadata.get("chunk_id") or self.id)
+
 
 class VectorStore(ABC):
     provider: str

@@ -2,49 +2,36 @@
 
 Retrieve relevant chunks from a vector database.
 
-The SDK retrieval interface accepts an embedder object. It does not create the
-embedder inside `retrieve()`, so custom embedders and provider objects work the
-same way.
+Configured clients create the query embedder and vector store automatically.
 
 ## Basic Usage
 
 ```python
 from ragrails import RagRails
 
-rag = RagRails()
-
-query_embedder = rag.embedder(
-    provider="voyage",
-    model="voyage-3",
-    input_type="query",
+rag = RagRails(
+    collection="docs",
+    vector_store={"provider": "qdrant", "url": "http://localhost:6333"},
+    embedding={"provider": "voyage", "model": "voyage-3"},
+    llm={"provider": "openai", "model": "gpt-5.5"},
+    reranker={"enabled": True, "provider": "voyage", "model": "rerank-2-lite"},
 )
 
 result = rag.retrieve(
     "How do I authenticate?",
-    embedder=query_embedder,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
     top_k=10,
 )
 
 for item in result.items:
-    print(item.score, item.text)
+    print(item.chunk_id, item.score, item.text)
 ```
 
 ## With Reranking
 
 ```python
-query_embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
-reranker = rag.reranker(provider="voyage", model="rerank-2-lite")
-
 result = rag.retrieve(
     "How do I authenticate?",
-    embedder=query_embedder,
-    vector_db="qdrant",
-    collection="docs",
     use_rerank=True,
-    reranker=reranker,
     top_k=20,
     rerank_top_k=5,
 )
@@ -55,11 +42,7 @@ result = rag.retrieve(
 ```python
 result = rag.retrieve(
     "How do I do it?",
-    embedder=query_embedder,
-    vector_db="qdrant",
-    collection="docs",
     use_query_rewrite=True,
-    rewrite_llm=llm,
     rewrite_context="Product documentation",
     session_context="User is asking about authentication",
 )
@@ -77,3 +60,7 @@ RetrieveResult(
     errors=[],
 )
 ```
+
+Each retrieved item includes `chunk_id`, which is the identifier to pass to
+edit and delete operations. It is read from stored chunk metadata when present
+and falls back to the vector point id.

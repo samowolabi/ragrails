@@ -22,17 +22,11 @@ class ServerStoringServiceTests(unittest.TestCase):
 
     def test_edit_creates_embedder_and_calls_sdk(self) -> None:
         expected = EditResult(requested=1, edited=1, items=[{"id": "chunk-1"}], failed=0, provider="qdrant", collection="docs", errors=[])
-        fake_embedder = object()
-
-        with (
-            patch.object(RagRails, "embedder", return_value=fake_embedder) as embedder,
-            patch.object(RagRails, "edit", return_value=expected) as edit,
-        ):
+        with patch.object(RagRails, "edit", return_value=expected) as edit:
             result = edit_chunks(EditRequest(chunks=[{"id": "chunk-1", "text": "updated"}], collection="docs"))
 
-        embedder.assert_called_once_with(provider="voyage", model="voyage-3", input_type="document", options=None)
         edit.assert_called_once()
-        self.assertIs(edit.call_args.kwargs["embedder"], fake_embedder)
+        self.assertEqual(edit.call_args.kwargs["chunks"], [{"id": "chunk-1", "text": "updated"}])
         self.assertEqual(result["edited"], 1)
 
     def test_delete_calls_sdk(self) -> None:
@@ -41,7 +35,7 @@ class ServerStoringServiceTests(unittest.TestCase):
         with patch.object(RagRails, "delete", return_value=expected) as delete:
             result = delete_chunks(DeleteRequest(ids=["chunk-1"], collection="docs"))
 
-        delete.assert_called_once_with(ids=["chunk-1"], vector_db="qdrant", collection="docs", url=None, options=None)
+        delete.assert_called_once_with(ids=["chunk-1"])
         self.assertEqual(result["deleted"], 1)
 
 

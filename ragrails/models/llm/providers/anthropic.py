@@ -38,7 +38,7 @@ class AnthropicProvider(LLMProvider):
             try:
                 import anthropic
             except ImportError as exc:
-                raise RuntimeError('Anthropic support requires: pip install "ragrails[anthropic]"') from exc
+                raise RuntimeError("Anthropic support is missing. Reinstall or upgrade ragrails.") from exc
             api_key = os.environ.get("ANTHROPIC_API_KEY")
             if not api_key:
                 raise ValueError("ANTHROPIC_API_KEY environment variable not set.")

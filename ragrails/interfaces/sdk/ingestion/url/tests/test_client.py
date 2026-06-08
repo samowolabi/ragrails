@@ -173,6 +173,26 @@ class UrlSDKTests(unittest.TestCase):
         self.assertEqual(len(urls_arg), 2)
         self.assertIsInstance(urls_arg[1], dict)
 
+    def test_scrape_stream_yields_progress_and_final_result(self) -> None:
+        stats = _make_stats()
+
+        async def fake_scrape_url(**kwargs):
+            kwargs["progress_callback"]({
+                "type": "page",
+                "stage": "scrape",
+                "message": "Scraped page",
+                "data": {"url": "https://example.com/docs"},
+            })
+            return stats
+
+        with patch("ragrails.core.stg_01_ingestors.url.scrape_url", side_effect=fake_scrape_url):
+            events = list(_Rag().scrape_stream("https://example.com/docs"))
+
+        self.assertEqual(events[0]["type"], "page")
+        self.assertEqual(events[0]["data"]["url"], "https://example.com/docs")
+        self.assertEqual(events[-1]["type"], "final")
+        self.assertEqual(events[-1]["data"]["pages"], 1)
+
     def test_scrape_markdown_format_includes_text_in_output(self) -> None:
         stats = _make_stats()
         with patch("ragrails.core.stg_01_ingestors.url.scrape_url", return_value=stats):

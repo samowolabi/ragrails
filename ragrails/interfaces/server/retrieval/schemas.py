@@ -12,7 +12,7 @@ class RetrieveRequest(BaseModel):
     provider: str = "voyage"
     model: str = "voyage-3"
     embedder_options: dict[str, Any] | None = None
-    vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant"
+    vector_db: Literal["qdrant", "qdrant_cloud", "pinecone", "weaviate"] = "qdrant"
     collection: str | None = None
     url: str | None = None
     options: dict[str, Any] | None = None
@@ -29,6 +29,7 @@ class RetrieveRequest(BaseModel):
 
 class RetrievedChunkResponse(BaseModel):
     id: str
+    chunk_id: str
     score: float
     text: str
     metadata: dict[str, Any]

@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 
 from qdrant_client import QdrantClient
@@ -11,11 +12,13 @@ class QdrantStore(VectorStore):
     provider: str = "qdrant"
     url: str = "http://localhost:6333"
     collection: str = "rag_chunks"
+    api_key: str | None = None
     _client: QdrantClient = field(init=False, repr=False, default=None)
 
     def _get_client(self) -> QdrantClient:
         if self._client is None:
-            self._client = QdrantClient(url=self.url)
+            api_key = self.api_key or os.environ.get("QDRANT_API_KEY")
+            self._client = QdrantClient(url=self.url, api_key=api_key)
         return self._client
 
     def ensure_collection(self, vector_size: int) -> None:

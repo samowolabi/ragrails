@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from ragrails.types import RetrievedChunk, RetrieveResult
-from ragrails.interfaces.sdk.shared import missing_extra
+from ragrails.interfaces.sdk.shared import configured, configured_object, merge_config, missing_extra, vector_store_config
 from ragrails.interfaces.sdk.storing.client import validate_vector_store_collection
 
 
@@ -13,11 +13,20 @@ class RetrievalMixin:
     def reranker(
         self,
         *,
-        provider: str = "voyage",
-        model: str = "rerank-2-lite",
+        provider: str | None = None,
+        model: str | None = None,
         options: dict[str, Any] | None = None,
     ):
         """Create a reranker model object."""
+        config = merge_config(configured(self, "reranker"), {
+            "provider": provider,
+            "model": model,
+            "options": options,
+        })
+        config.pop("enabled", None)
+        provider = config.get("provider", "voyage")
+        model = config.get("model", "rerank-2-lite")
+        options = config.get("options")
         self._validate_reranker_args(provider=provider, model=model, options=options)
 
         try:
@@ -32,8 +41,8 @@ class RetrievalMixin:
         self,
         query: str,
         *,
-        embedder,
-        vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant",
+        embedder=None,
+        vector_db: Literal["qdrant", "qdrant_cloud", "pinecone", "weaviate"] | None = None,
         collection: str | None = None,
         url: str | None = None,
         options: dict[str, Any] | None = None,
@@ -47,6 +56,19 @@ class RetrievalMixin:
         rerank_top_k: int = 5,
     ) -> RetrieveResult:
         """Retrieve the most relevant chunks for a query."""
+        if embedder is None and hasattr(self, "embedder"):
+            embedder = self.embedder(input_type="query")
+        vector_db, collection, url, options = vector_store_config(
+            self,
+            vector_db=vector_db,
+            collection=collection,
+            url=url,
+            options=options,
+        )
+        if use_query_rewrite and rewrite_llm is None and configured(self, "llm") and hasattr(self, "llm"):
+            rewrite_llm = self.llm()
+        if use_rerank and reranker is None:
+            reranker = configured_object(self, "reranker", lambda _: self.reranker())
         self._validate_retrieve_args(
             query=query,
             embedder=embedder,
@@ -97,6 +119,7 @@ class RetrievalMixin:
             items=[
                 RetrievedChunk(
                     id=item.id,
+                    chunk_id=item.chunk_id,
                     score=item.score,
                     text=item.text,
                     metadata=item.metadata,

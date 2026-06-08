@@ -8,6 +8,19 @@ Command for RAG chat from the terminal.
 |---|---|---|
 | `chat` | `RagRails().chat()` | Run one SDK-backed chat turn. |
 
+## LLM Providers
+
+OpenAI, Anthropic, and Google Gemini are available from the base Ragrails
+install. Set the API key for the provider you use:
+
+```bash
+export OPENAI_API_KEY=...
+export ANTHROPIC_API_KEY=...
+export GEMINI_API_KEY=...
+```
+
+Choose the provider and model with `--llm-provider` and `--llm-model`.
+
 ## One-shot Chat
 
 ```bash

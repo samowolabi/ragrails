@@ -6,7 +6,7 @@ Command for searching a stored vector index.
 
 | Command | SDK methods | Purpose |
 |---|---|---|
-| `retrieve` | `RagRails().embedder()`, `RagRails().retrieve()` | Embed a query and retrieve relevant chunks. |
+| `retrieve` | `RagRails(...).retrieve()` | Embed a query and retrieve relevant chunks. |
 
 ## Example
 

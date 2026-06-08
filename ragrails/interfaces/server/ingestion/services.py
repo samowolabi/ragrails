@@ -29,5 +29,17 @@ def scrape_url(request: UrlIngestRequest) -> dict[str, Any]:
     return result_data(RagRails().scrape(**model_data(request)))
 
 
+def scrape_url_stream(request: UrlIngestRequest):
+    return RagRails().scrape_stream(**model_data(request))
+
+
 def parse_docs(request: DocsIngestRequest) -> dict[str, Any]:
     return result_data(RagRails().parse(**_normalize_docs_request(request)))
+
+
+def parse_uploaded_docs(
+    files: list[dict[str, Any]],
+    *,
+    frontmatter: bool = False,
+) -> dict[str, Any]:
+    return result_data(RagRails().parse(files=files, frontmatter=frontmatter))

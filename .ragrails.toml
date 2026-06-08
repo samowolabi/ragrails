@@ -1,0 +1,18 @@
+[vector_store]
+provider = "qdrant_cloud"
+collection = "docs"
+url = ""
+
+[embedding]
+provider = "voyage"
+model = "voyage-3"
+
+[llm]
+provider = "openai"
+model = "gpt-5.5"
+max_tokens = 1024
+
+[reranker]
+enabled = false
+provider = "voyage"
+model = "rerank-2-lite"

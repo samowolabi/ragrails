@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import json
+from queue import Queue
 import subprocess
 import sys
+from threading import Thread
+from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
 from ragrails.types import DLQ, ScrapeResult
+from ragrails.interfaces.sdk.events import stream_event
 from ragrails.interfaces.sdk.shared import missing_extra, run_async
 from ragrails.interfaces.sdk.ingestion.utils.shared import save_outputs_to_dir
 from ragrails.interfaces.sdk.ingestion.utils.frontmatter import with_frontmatter
@@ -164,6 +168,76 @@ class UrlMixin:
             dlq=dlq_result,
         )
 
+    def scrape_stream(
+        self,
+        url: str | list[str | dict] | None = None,
+        *,
+        mode: Literal["each", "full"] = "each",
+        max_depth: int = 3,
+        max_pages: int = 200,
+        verbose: bool = False,
+        frontmatter: bool = False,
+    ):
+        """Yield live scrape events and finish with the final ScrapeResult."""
+        if url is None:
+            raise ValueError("Provide 'url'")
+        self._validate_scrape_args(url=url, mode=mode, max_depth=max_depth, max_pages=max_pages)
+
+        try:
+            from ragrails.core.stg_01_ingestors.url import scrape_url
+            from ragrails.core.stg_01_ingestors.config import UrlIngestorConfig
+        except ImportError as exc:
+            raise missing_extra("URL ingestion", "url", exc)
+
+        queue: Queue = Queue()
+        done = object()
+        sequence = 0
+
+        def next_event(event_type: str, *, stage: str, message: str = "", data: dict | None = None) -> dict:
+            nonlocal sequence
+            sequence += 1
+            return stream_event(event_type, stage=stage, message=message, data=data, sequence=sequence)
+
+        def progress_callback(event: dict) -> None:
+            queue.put(next_event(
+                event.get("type", "progress"),
+                stage=event.get("stage", "scrape"),
+                message=event.get("message", ""),
+                data=event.get("data", {}),
+            ))
+
+        def worker() -> None:
+            try:
+                stats = run_async(scrape_url(
+                    urls=url,
+                    mode=mode,
+                    config=UrlIngestorConfig(max_depth=max_depth, max_pages=max_pages),
+                    verbose=verbose,
+                    progress_callback=progress_callback,
+                ))
+                outputs = stats.get("outputs", [])
+                if frontmatter:
+                    outputs = with_frontmatter(outputs)
+                result = ScrapeResult(
+                    pages=stats["pages"],
+                    failed=stats["failed"],
+                    outputs=outputs,
+                    errors=stats.get("errors", []),
+                    dlq=None,
+                )
+                queue.put(next_event("final", stage="complete", message="Scrape complete", data=_scrape_result_data(result)))
+            except Exception as exc:
+                queue.put(next_event("error", stage="scrape", message=str(exc), data={"error": str(exc)}))
+            finally:
+                queue.put(done)
+
+        Thread(target=worker, daemon=True).start()
+        while True:
+            item = queue.get()
+            if item is done:
+                break
+            yield item
+
     @staticmethod
     def _resolve_dlq_retry(dlq: DLQ | str) -> tuple[list[dict], str | None]:
         if isinstance(dlq, str):
@@ -223,3 +297,7 @@ def _setup_error_details(completed: subprocess.CompletedProcess) -> str:
     if completed.stdout:
         details.append(f"stdout: {completed.stdout.strip()}")
     return "\n" + "\n".join(details) if details else ""
+
+
+def _scrape_result_data(result: ScrapeResult) -> dict:
+    return asdict(result)

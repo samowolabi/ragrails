@@ -30,13 +30,14 @@ class CliMainTests(unittest.TestCase):
             "ingest",
             "query",
             "chat",
+            "doctor",
         ]:
             self.assertIn(command, result.output)
 
     def test_cli_modules_have_local_readmes(self) -> None:
         base = Path("ragrails/interfaces/cli")
         expected = {
-            "README.md": ["setup-url", "scrape", "parse", "fetch", "chunk", "embed", "store", "edit", "delete", "retrieve", "ingest", "query", "chat"],
+            "README.md": ["setup-url", "scrape", "parse", "fetch", "chunk", "embed", "store", "edit", "delete", "retrieve", "ingest", "query", "chat", "doctor"],
             "ingestion/README.md": ["setup-url", "scrape", "parse", "fetch"],
             "chunking/README.md": ["chunk"],
             "embedding/README.md": ["embed"],
@@ -44,6 +45,7 @@ class CliMainTests(unittest.TestCase):
             "retrieval/README.md": ["retrieve"],
             "pipeline/README.md": ["ingest", "query"],
             "chat/README.md": ["chat"],
+            "doctor/README.md": ["doctor"],
         }
 
         for relative_path, commands in expected.items():
@@ -68,6 +70,7 @@ class CliMainTests(unittest.TestCase):
             "ingest",
             "query",
             "chat",
+            "doctor",
         }
 
         self.assertLessEqual(documented_commands, set(cli.commands))

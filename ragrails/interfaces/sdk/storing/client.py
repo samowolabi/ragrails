@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from ragrails.interfaces.sdk.shared import missing_extra
+from ragrails.interfaces.sdk.shared import missing_extra, vector_store_config
 from ragrails.types import DeleteResult, EditResult, StoreResult
 
 
 def validate_vector_store_collection(*, vector_db: str, collection: str | None) -> None:
-    if vector_db not in {"qdrant", "pinecone", "weaviate"}:
-        raise ValueError("vector_db must be one of: qdrant, pinecone, weaviate")
+    if vector_db not in {"qdrant", "qdrant_cloud", "pinecone", "weaviate"}:
+        raise ValueError("vector_db must be one of: qdrant, qdrant_cloud, pinecone, weaviate")
     if vector_db == "pinecone" and collection and "_" in collection:
         raise ValueError("Pinecone collection/index names cannot contain underscores. Use hyphens, e.g. 'rag-chunks'.")
     if vector_db == "weaviate" and collection and not collection.isalnum():
@@ -24,7 +24,7 @@ class StoringMixin:
         self,
         *,
         embedded_chunks: list[dict],
-        vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant",
+        vector_db: Literal["qdrant", "qdrant_cloud", "pinecone", "weaviate"] | None = None,
         collection: str | None = None,
         url: str | None = None,
         batch_size: int = 64,
@@ -32,6 +32,13 @@ class StoringMixin:
         options: dict[str, Any] | None = None,
     ) -> StoreResult:
         """Store embedded chunks in the configured vector database."""
+        vector_db, collection, url, options = vector_store_config(
+            self,
+            vector_db=vector_db,
+            collection=collection,
+            url=url,
+            options=options,
+        )
         self._validate_store_args(
             embedded_chunks=embedded_chunks,
             vector_db=vector_db,
@@ -74,14 +81,23 @@ class StoringMixin:
         self,
         *,
         chunks: list[dict],
-        embedder,
-        vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant",
+        embedder=None,
+        vector_db: Literal["qdrant", "qdrant_cloud", "pinecone", "weaviate"] | None = None,
         collection: str | None = None,
         url: str | None = None,
         batch_size: int = 64,
         options: dict[str, Any] | None = None,
     ) -> EditResult:
         """Edit stored chunks by replacing their text, metadata, and vectors."""
+        if embedder is None and hasattr(self, "embedder"):
+            embedder = self.embedder(input_type="document")
+        vector_db, collection, url, options = vector_store_config(
+            self,
+            vector_db=vector_db,
+            collection=collection,
+            url=url,
+            options=options,
+        )
         self._validate_edit_args(
             chunks=chunks,
             embedder=embedder,
@@ -124,12 +140,19 @@ class StoringMixin:
         self,
         *,
         ids: list[str],
-        vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant",
+        vector_db: Literal["qdrant", "qdrant_cloud", "pinecone", "weaviate"] | None = None,
         collection: str | None = None,
         url: str | None = None,
         options: dict[str, Any] | None = None,
     ) -> DeleteResult:
         """Delete stored chunks by exact chunk IDs."""
+        vector_db, collection, url, options = vector_store_config(
+            self,
+            vector_db=vector_db,
+            collection=collection,
+            url=url,
+            options=options,
+        )
         self._validate_delete_args(
             ids=ids,
             vector_db=vector_db,

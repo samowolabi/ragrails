@@ -28,10 +28,10 @@ class GoogleProvider(LLMProvider):
             try:
                 from google import genai
             except ImportError as exc:
-                raise RuntimeError('Google Gemini support requires: pip install "ragrails[google]"') from exc
-            api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+                raise RuntimeError("Google Gemini support is missing. Reinstall or upgrade ragrails.") from exc
+            api_key = os.environ.get("GEMINI_API_KEY")
             if not api_key:
-                raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set.")
+                raise ValueError("GEMINI_API_KEY environment variable not set.")
             self._client = genai.Client(api_key=api_key)
         return self._client
 

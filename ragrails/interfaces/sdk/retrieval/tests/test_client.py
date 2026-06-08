@@ -61,7 +61,7 @@ class RetrievalSDKTests(unittest.TestCase):
             id="chunk-1",
             score=0.91,
             text="Use bearer tokens.",
-            metadata={"title": "Auth"},
+            metadata={"chunk_id": "chk-auth", "title": "Auth"},
             rerank_score=0.98,
         )
         stats = {
@@ -119,6 +119,7 @@ class RetrievalSDKTests(unittest.TestCase):
         self.assertEqual(result.errors, [])
         self.assertEqual(len(result.items), 1)
         self.assertEqual(result.items[0].id, "chunk-1")
+        self.assertEqual(result.items[0].chunk_id, "chk-auth")
         self.assertEqual(result.items[0].rerank_score, 0.98)
 
     def test_retrieve_preserves_core_errors(self) -> None:

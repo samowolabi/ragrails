@@ -12,7 +12,7 @@ import asyncio
 import hashlib
 import re
 import time
-from typing import Literal
+from typing import Callable, Literal
 from urllib.parse import urlparse, urlunparse
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
@@ -145,6 +145,11 @@ def _retry_input(
 
 def _crawled_page(source: str, document_id: str) -> dict:
     return {"source": source, "id": document_id}
+
+
+def _emit_progress(callback: Callable[[dict], None] | None, event: dict) -> None:
+    if callback is not None:
+        callback(event)
 
 
 def _document_id(source: str, text: str) -> str:
@@ -308,6 +313,7 @@ async def _crawl_one(
     max_depth: int,
     max_pages: int,
     verbose: bool,
+    progress_callback: Callable[[dict], None] | None = None,
     max_retries: int = 3,
     retry_delay: float = 5.0,
 ) -> dict:
@@ -317,6 +323,12 @@ async def _crawl_one(
     last_stage = "crawl"
 
     for attempt in range(1, max_retries + 1):
+        _emit_progress(progress_callback, {
+            "type": "progress",
+            "stage": "scrape",
+            "message": "Started URL scrape",
+            "data": {"url": url, "mode": "each", "attempt": attempt},
+        })
         start = time.time()
         result = await crawler.arun(url=url, config=config)
         elapsed = time.time() - start
@@ -337,6 +349,18 @@ async def _crawl_one(
                 last_error = "no content returned after cleanup"
                 last_stage = "cleanup"
                 break
+            _emit_progress(progress_callback, {
+                "type": "page",
+                "stage": "scrape",
+                "message": "Scraped page",
+                "data": {
+                    "url": url,
+                    "document_id": document["id"],
+                    "status_code": result.status_code,
+                    "size_kb": size_kb,
+                    "elapsed_seconds": elapsed,
+                },
+            })
             return {
                 "pages": 1,
                 "failed": 0,
@@ -348,6 +372,12 @@ async def _crawl_one(
 
         last_error = result.error_message or "unknown error"
         last_stage = "crawl"
+        _emit_progress(progress_callback, {
+            "type": "error",
+            "stage": "scrape",
+            "message": last_error,
+            "data": {"url": url, "mode": "each", "attempt": attempt},
+        })
         if attempt < max_retries:
             delay = retry_delay * attempt
             await asyncio.sleep(delay)
@@ -374,6 +404,7 @@ async def _crawl_site(
     max_depth: int,
     max_pages: int,
     verbose: bool,
+    progress_callback: Callable[[dict], None] | None = None,
 ) -> dict:
     """BFS-crawl an entire site and return markdown documents."""
     domain = urlparse(url).netloc
@@ -402,6 +433,12 @@ async def _crawl_site(
     last_yield_at = time.time()
 
     try:
+        _emit_progress(progress_callback, {
+            "type": "progress",
+            "stage": "scrape",
+            "message": "Started site crawl",
+            "data": {"url": url, "mode": "full", "max_depth": max_depth, "max_pages": max_pages},
+        })
         stream = await crawler.arun(url=url, config=config)
     except Exception as e:
         return {
@@ -430,7 +467,7 @@ async def _crawl_site(
 
         if not result.success or not result.markdown:
             failed += 1
-            errors.append(_error(
+            error = _error(
                 source=result.url,
                 error=result.error_message or "no markdown returned",
                 stage="crawl",
@@ -439,7 +476,14 @@ async def _crawl_site(
                 attempts=1,
                 is_retryable=True,
                 retry_input=_retry_input(result.url),
-            ))
+            )
+            errors.append(error)
+            _emit_progress(progress_callback, {
+                "type": "error",
+                "stage": "scrape",
+                "message": error["error"],
+                "data": error,
+            })
             continue
 
         normalized = result.url.rstrip("/")
@@ -464,7 +508,7 @@ async def _crawl_site(
         )
         if not document["text"].strip():
             failed += 1
-            errors.append(_error(
+            error = _error(
                 source=result.url,
                 error="no content returned after cleanup",
                 stage="cleanup",
@@ -472,7 +516,14 @@ async def _crawl_site(
                 root_url=url,
                 attempts=1,
                 is_retryable=False,
-            ))
+            )
+            errors.append(error)
+            _emit_progress(progress_callback, {
+                "type": "error",
+                "stage": "scrape",
+                "message": error["error"],
+                "data": error,
+            })
             continue
 
         pages += 1
@@ -480,6 +531,19 @@ async def _crawl_site(
         crawled.append(_crawled_page(result.url, document["id"]))
         total_kb += size_kb
         page_times.append((result.url, page_time, size_kb))
+        _emit_progress(progress_callback, {
+            "type": "page",
+            "stage": "scrape",
+            "message": "Crawled page",
+            "data": {
+                "url": result.url,
+                "document_id": document["id"],
+                "status_code": result.status_code,
+                "size_kb": size_kb,
+                "elapsed_seconds": page_time,
+                "pages": pages,
+            },
+        })
 
     return {"pages": pages, "failed": failed, "total_kb": total_kb, "page_times": page_times, "outputs": outputs, "crawled": crawled, "errors": errors}
 
@@ -489,6 +553,7 @@ async def scrape_url(
     mode: Literal["each", "full"] = "each",
     config: UrlIngestorConfig | None = None,
     verbose: bool = True,
+    progress_callback: Callable[[dict], None] | None = None,
     **_ignored_options,
 ) -> dict:
     """Scrape URL entries and return successful documents plus failed pages."""
@@ -512,6 +577,7 @@ async def scrape_url(
                         max_depth=request["max_depth"],
                         max_pages=request["max_pages"],
                         verbose=verbose,
+                        progress_callback=progress_callback,
                     )
                 elif request["mode"] == "full":
                     stats = await _crawl_site(
@@ -520,6 +586,7 @@ async def scrape_url(
                         request["max_depth"],
                         request["max_pages"],
                         verbose=verbose,
+                        progress_callback=progress_callback,
                     )
                 else:
                     raise ValueError(f"Invalid mode '{request['mode']}' — use 'each' or 'full'")

@@ -17,10 +17,15 @@ class ServerPipelineServiceTests(unittest.TestCase):
         expected = IngestPipelineResult(sources=1, chunks=1, embedded=1, stored=1, source_results={}, chunk_result=chunk, embed_result=embed, store_result=store, failed=0, errors=[])
 
         with patch.object(RagRails, "ingest", return_value=expected) as ingest:
-            result = ingest_pipeline(PipelineIngestRequest(markdown="hello", storage={"collection": "docs"}))
+            result = ingest_pipeline(PipelineIngestRequest(
+                markdown="hello",
+                storage={"collection": "docs"},
+                concurrency="parallel",
+            ))
 
         ingest.assert_called_once()
         self.assertEqual(ingest.call_args.kwargs["markdown"], "hello")
+        self.assertEqual(ingest.call_args.kwargs["concurrency"], "parallel")
         self.assertEqual(result["stored"], 1)
 
     def test_query_pipeline_calls_sdk(self) -> None:
@@ -29,7 +34,7 @@ class ServerPipelineServiceTests(unittest.TestCase):
         with patch.object(RagRails, "query", return_value=expected) as query:
             result = query_pipeline(PipelineQueryRequest(query="auth", retrieval={"collection": "docs"}))
 
-        query.assert_called_once_with("auth", embedding=None, retrieval={"collection": "docs"})
+        query.assert_called_once_with("auth", embedding={}, retrieval={})
         self.assertEqual(result["query"], "auth")
 
 

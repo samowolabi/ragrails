@@ -21,18 +21,9 @@ class ServerChatServiceTests(unittest.TestCase):
             retrieval_quality={},
             answer_confidence={},
         )
-        fake_llm = object()
-        fake_embedder = object()
-
-        with (
-            patch.object(RagRails, "llm", return_value=fake_llm) as llm,
-            patch.object(RagRails, "embedder", return_value=fake_embedder) as embedder,
-            patch.object(RagRails, "chat", return_value=expected) as chat,
-        ):
+        with patch.object(RagRails, "chat", return_value=expected) as chat:
             result = run_chat(ChatRequest(query="auth", collection="docs", query_rewrite=QueryRewriteRequest(enabled=True, session_context="docs")))
 
-        llm.assert_called_once_with(provider="openai", model="gpt-4o-mini", max_tokens=1024)
-        embedder.assert_called_once_with(provider="voyage", model="voyage-3", input_type="query", options=None)
         self.assertEqual(chat.call_args.args, ("auth",))
         self.assertTrue(chat.call_args.kwargs["query_rewrite"].enabled)
         self.assertEqual(chat.call_args.kwargs["query_rewrite"].session_context, "docs")

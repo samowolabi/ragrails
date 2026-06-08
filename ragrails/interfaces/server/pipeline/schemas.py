@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -18,6 +18,7 @@ class PipelineIngestRequest(BaseModel):
     chunking: dict[str, Any] | None = None
     embedding: dict[str, Any] | None = None
     storage: dict[str, Any] | None = None
+    concurrency: Literal["serial", "parallel"] = "serial"
 
 
 class PipelineIngestResponse(BaseModel):

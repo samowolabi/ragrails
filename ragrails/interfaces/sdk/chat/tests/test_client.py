@@ -40,6 +40,10 @@ class FakeLLM:
             provider="fake",
         )
 
+    def stream(self, system: str, user: str, history=None, temperature=None):
+        yield "Use "
+        yield "bearer auth."
+
 
 class FakeStore:
     collection = "docs"
@@ -259,6 +263,31 @@ class SDKChatTests(unittest.TestCase):
                 embedder=FakeEmbedder(),
                 query_rewrite=QueryRewriteConfig(enabled=True, llm=object()),
             )
+
+    def test_chat_stream_yields_progress_tokens_and_final_result(self) -> None:
+        with (
+            patch("ragrails.models.vector_db.registry.create_vector_store", return_value=FakeStore()),
+            patch("ragrails.core.stg_05_retriever.run_retrieval", return_value={
+                "query": "How do I authenticate?",
+                "search_query": "How do I authenticate?",
+                "retrieved": 0,
+                "failed": 0,
+                "outputs": [],
+                "errors": [],
+            }),
+        ):
+            events = list(SDK().chat_stream(
+                "How do I authenticate?",
+                llm=FakeLLM(),
+                embedder=FakeEmbedder(),
+                intent_routing=IntentRoutingConfig(enabled=False),
+            ))
+
+        self.assertEqual(events[0]["type"], "progress")
+        self.assertIn("retrieval", [event["stage"] for event in events])
+        self.assertEqual([event["data"]["text"] for event in events if event["type"] == "token"], ["Use ", "bearer auth."])
+        self.assertEqual(events[-1]["type"], "final")
+        self.assertEqual(events[-1]["data"]["answer"], "Use bearer auth.")
 
 
 if __name__ == "__main__":

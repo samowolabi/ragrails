@@ -17,6 +17,38 @@ class CliIngestionTests(unittest.TestCase):
     def invoke(self, args: list[str]):
         return self.runner.invoke(cli, args)
 
+    def test_setup_url_prompts_for_browser(self) -> None:
+        expected = {"browser": "firefox", "command": ["python", "-m", "playwright", "install", "firefox"]}
+
+        with patch.object(RagRails, "setup_url", return_value=expected) as setup:
+            result = self.runner.invoke(cli, ["setup-url"], input="firefox\n")
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        setup.assert_called_once_with(browser="firefox")
+        self.assertIn("URL ingestion setup", result.output)
+        self.assertIn("Ready. URL scraping can now use firefox.", result.output)
+        self.assertIn("ragrails scrape", result.output)
+        self.assertNotIn("Command:", result.output)
+
+    def test_setup_url_browser_flag_skips_prompt(self) -> None:
+        expected = {"browser": "webkit", "command": ["python", "-m", "playwright", "install", "webkit"]}
+
+        with patch.object(RagRails, "setup_url", return_value=expected) as setup:
+            result = self.runner.invoke(cli, ["setup-url", "--browser", "webkit"])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        setup.assert_called_once_with(browser="webkit")
+        self.assertNotIn("Browser:", result.output)
+
+    def test_setup_url_verbose_shows_install_command(self) -> None:
+        expected = {"browser": "chromium", "command": ["python", "-m", "playwright", "install", "chromium"]}
+
+        with patch.object(RagRails, "setup_url", return_value=expected):
+            result = self.runner.invoke(cli, ["setup-url", "--browser", "chromium", "--verbose"])
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Command: python -m playwright install chromium", result.output)
+
     def test_scrape_parses_multiple_urls_and_options(self) -> None:
         expected = ScrapeResult(pages=2, failed=0, outputs=[], errors=[])
 

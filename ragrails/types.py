@@ -144,6 +144,7 @@ class RetrievedChunk:
     """One retrieved chunk returned by `RagRails().retrieve(...)`."""
 
     id: str
+    chunk_id: str
     score: float
     text: str
     metadata: dict

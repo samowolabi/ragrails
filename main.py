@@ -1,5 +1,5 @@
 def main():
-    print("Hello from agent-rag-v2!")
+    print("Hello from ragrails-v2!")
 
 
 if __name__ == "__main__":

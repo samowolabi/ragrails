@@ -39,14 +39,14 @@ Requires Python 3.10 or newer.
 pip install ragrails
 ```
 
-Install extras for URL scraping, model providers, and vector database clients:
+Install extras for URL scraping, embedding providers, reranking, and vector
+database clients. OpenAI, Anthropic, and Google Gemini LLM providers are
+included in the base install.
 
 | Need | Install |
 |---|---|
 | URL ingestion | `pip install "ragrails[url]"` |
 | Voyage embeddings | `pip install "ragrails[voyage]"` |
-| OpenAI | `pip install "ragrails[openai]"` |
-| Anthropic | `pip install "ragrails[anthropic]"` |
 | Qdrant | `pip install "ragrails[qdrant]"` |
 | Pinecone | `pip install "ragrails[pinecone]"` |
 | Weaviate | `pip install "ragrails[weaviate]"` |
@@ -64,21 +64,18 @@ Install extras for URL scraping, model providers, and vector database clients:
 ```python
 from ragrails import RagRails
 
-rag = RagRails()
+rag = RagRails(
+    collection="docs",
+    vector_store={"provider": "qdrant", "url": "http://localhost:6333"},
+    embedding={"provider": "voyage", "model": "voyage-3"},
+    llm={"provider": "openai", "model": "gpt-5.5"},
+)
 
 # Ingest a document and store it
-rag.ingest(
-    docs=["files/guide.pdf"],
-    embedding={"provider": "voyage", "model": "voyage-3"},
-    storage={"vector_db": "qdrant", "collection": "docs", "url": "http://localhost:6333"},
-)
+rag.ingest(docs=["files/guide.pdf"])
 
 # Query it
-result = rag.query(
-    "What does the guide cover?",
-    embedding={"provider": "voyage", "model": "voyage-3"},
-    retrieval={"vector_db": "qdrant", "collection": "docs", "url": "http://localhost:6333"},
-)
+result = rag.query("What does the guide cover?")
 
 for chunk in result.items:
     print(chunk.text)
@@ -198,12 +195,10 @@ result.items   # list of chunk dicts — each has id, text, source, metadata
 
 ### Embedding
 
-Create an embedder object, then pass it to `embed()`.
+Configured clients create the embedder automatically.
 
 ```python
-embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="document")
-
-result = rag.embed(chunks=result.items, embedder=embedder, batch_size=64)
+result = rag.embed(chunks=result.items, batch_size=64)
 
 result.embedded  # chunks successfully embedded
 result.items     # chunk dicts with an added "embedding" vector field
@@ -221,9 +216,6 @@ Store embedded chunks in a vector database. `store()` creates the collection aut
 ```python
 result = rag.store(
     embedded_chunks=result.items,
-    vector_db="qdrant",         # "qdrant", "pinecone", or "weaviate"
-    collection="docs",
-    url="http://localhost:6333",
 )
 
 result.stored      # chunks upserted
@@ -237,38 +229,28 @@ result.collection  # collection name
 # Re-embed and replace chunks by ID
 edit_result = rag.edit(
     chunks=[{"id": "chunk-id", "text": "Updated text", "source": "...", "metadata": {}}],
-    embedder=rag.embedder(provider="voyage", model="voyage-3"),
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
 )
 
 # Delete chunks by ID
 delete_result = rag.delete(
     ids=["chunk-id-1", "chunk-id-2"],
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
 )
 ```
 
-Supported databases: `qdrant`, `pinecone`, `weaviate`.
+Supported databases: `qdrant`, `qdrant_cloud`, `pinecone`, `weaviate`.
+
+For Qdrant Cloud, use `provider="qdrant_cloud"` with your cluster URL and set
+`QDRANT_API_KEY` in your environment.
 
 ---
 
 ### Retrieval
 
-Create an embedder with `input_type="query"`, then retrieve.
+Configured clients create the query embedder and vector store automatically.
 
 ```python
-embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
-
 result = rag.retrieve(
     "How do I authenticate?",
-    embedder=embedder,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
     top_k=10,
 )
 
@@ -279,16 +261,9 @@ for chunk in result.items:
 **With reranking**
 
 ```python
-reranker = rag.reranker(provider="voyage", model="rerank-2-lite")
-
 result = rag.retrieve(
     "How do I authenticate?",
-    embedder=embedder,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
     use_rerank=True,
-    reranker=reranker,
     rerank_top_k=5,
 )
 ```
@@ -296,16 +271,9 @@ result = rag.retrieve(
 **With query rewriting**
 
 ```python
-rewrite_llm = rag.llm(provider="openai", model="gpt-4o-mini")
-
 result = rag.retrieve(
     "What about the second step?",
-    embedder=embedder,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
     use_query_rewrite=True,
-    rewrite_llm=rewrite_llm,
     session_context="User is asking about the onboarding flow.",
 )
 
@@ -321,19 +289,10 @@ Chat is stateless. Pass `history` in and persist `result.history` in your applic
 ```python
 from ragrails import QueryRewriteConfig, RagRails
 
-rag = RagRails()
-llm = rag.llm(provider="openai", model="gpt-4o-mini")
-embedder = rag.embedder(provider="voyage", model="voyage-3", input_type="query")
-
 history = []
 
 result = rag.chat(
     "How do I authenticate?",
-    llm=llm,
-    embedder=embedder,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
     history=history,
 )
 
@@ -353,13 +312,7 @@ from ragrails import (
 
 result = rag.chat(
     "What about the second step?",
-    llm=llm,
-    embedder=embedder,
-    vector_db="qdrant",
-    collection="docs",
-    url="http://localhost:6333",
     history=history,
-    reranker=rag.reranker(provider="voyage", model="rerank-2-lite"),
     query_rewrite=QueryRewriteConfig(enabled=True, session_context="Onboarding flow"),
     history_compaction=HistoryCompactionConfig(enabled=True, history_limit=15, keep_recent=5),
     intent_routing=IntentRoutingConfig(enabled=True),
@@ -385,8 +338,7 @@ result.compacted          # True if history was summarised this turn
 # Full pipeline: ingest → chunk → embed → store
 result = rag.ingest(
     docs=["files/guide.pdf"],
-    embedding={"provider": "voyage", "model": "voyage-3"},
-    storage={"vector_db": "qdrant", "collection": "docs", "url": "http://localhost:6333"},
+    concurrency="serial",
 )
 
 result.sources   # source documents ingested
@@ -397,11 +349,7 @@ result.stored    # chunks stored
 # Query pipeline: embed query → retrieve
 result = rag.query(
     "What does the guide cover?",
-    embedding={"provider": "voyage", "model": "voyage-3"},
     retrieval={
-        "vector_db": "qdrant",
-        "collection": "docs",
-        "url": "http://localhost:6333",
         "top_k": 5,
         "rerank": {"enabled": True, "provider": "voyage", "top_k": 3},
     },
@@ -409,14 +357,78 @@ result = rag.query(
 ```
 
 Sources accepted by `ingest()`: `docs`, `urls`, `api`, `markdown`. All can be combined in one call.
+Use `concurrency="parallel"` to run independent source ingestion groups at the
+same time before chunking, embedding, and storage.
 
 ---
 
 ## CLI
 
 ```bash
+ragrails
 ragrails --help
 ```
+
+Running `ragrails` with no subcommand starts the project setup wizard. Quick
+setup writes core defaults to `.ragrails.toml` in the current folder:
+
+```toml
+[vector_store]
+provider = "qdrant"
+collection = "docs"
+url = "http://localhost:6333"
+
+[embedding]
+provider = "voyage"
+model = "voyage-3"
+
+[llm]
+provider = "openai"
+model = "gpt-5.5"
+max_tokens = 1024
+
+[reranker]
+enabled = false
+provider = "voyage"
+model = "rerank-2-lite"
+```
+
+Use `provider = "qdrant_cloud"` with a Qdrant Cloud URL and set
+`QDRANT_API_KEY` in your environment.
+
+Advanced setup can also add practical stage defaults:
+
+```toml
+[chunking]
+chunk_size = 2000
+chunk_overlap = 200
+min_chunk_length = 100
+
+[embedding]
+provider = "voyage"
+model = "voyage-3"
+batch_size = 64
+
+[storage]
+batch_size = 64
+
+[retrieval]
+top_k = 10
+rerank_top_k = 5
+
+[chat]
+query_rewrite = false
+intent_routing = true
+history_compaction = true
+```
+
+CLI commands use this file as defaults. Command flags override config for one
+run. API keys are not written to config; set them with environment variables
+such as `VOYAGE_API_KEY` and `OPENAI_API_KEY`.
+
+Run `ragrails doctor` to validate your config, installed provider packages, API
+keys, and (with `--connections`) vector database reachability. It supports
+`--json` output for CI.
 
 ### Stage commands
 
@@ -434,28 +446,18 @@ ragrails chunk --input-dir files/output/docs/ --output-dir files/chunks/
 # Embed
 ragrails embed \
   --input-dir files/chunks/ \
-  --output-dir files/embedded/ \
-  --provider voyage \
-  --model voyage-3
+  --output-dir files/embedded/
 
 # Store
 ragrails store \
-  --input-dir files/embedded/ \
-  --vector-db qdrant \
-  --collection docs \
-  --url http://localhost:6333
+  --input-dir files/embedded/
 
 # Edit and delete
-ragrails edit --input-dir files/updated/ --vector-db qdrant --collection docs --url http://localhost:6333
-ragrails delete --id chunk-id-1 --id chunk-id-2 --vector-db qdrant --collection docs --url http://localhost:6333
+ragrails edit --input-dir files/updated/
+ragrails delete --id chunk-id-1 --id chunk-id-2
 
 # Retrieve
-ragrails retrieve "How do I authenticate?" \
-  --vector-db qdrant \
-  --collection docs \
-  --url http://localhost:6333 \
-  --provider voyage \
-  --model voyage-3
+ragrails retrieve "How do I authenticate?"
 ```
 
 ### Pipeline commands
@@ -464,19 +466,11 @@ Run the full pipeline in one command:
 
 ```bash
 ragrails ingest \
-  --docs files/guide.pdf \
-  --vector-db qdrant \
-  --collection docs \
-  --url http://localhost:6333 \
-  --provider voyage \
-  --model voyage-3
+  --docs files/guide.pdf
 
 ragrails query "What does the guide cover?" \
   --vector-db qdrant \
-  --collection docs \
-  --url http://localhost:6333 \
-  --provider voyage \
-  --model voyage-3 \
+  --collection other_docs \
   --rerank
 ```
 
@@ -485,12 +479,7 @@ ragrails query "What does the guide cover?" \
 One-shot chat turn:
 
 ```bash
-ragrails chat "How do I authenticate?" \
-  --vector-db qdrant \
-  --collection docs \
-  --url http://localhost:6333 \
-  --llm-provider openai \
-  --llm-model gpt-4o-mini
+ragrails chat "How do I authenticate?"
 ```
 
 Stateless multi-turn with a history file:
@@ -525,10 +514,20 @@ ragrails-api
 
 Swagger UI: `http://127.0.0.1:8000/docs`
 
+Run with Docker:
+
+```bash
+cp docker/env/api.env.example docker/env/api.env
+docker compose -f docker/compose/compose.yaml --env-file docker/env/api.env up --build
+```
+
+See [docker/README.md](docker/README.md) for API container, Qdrant, logs, and production notes.
+
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/v1/health` | Health check |
 | POST | `/v1/ingest/url` | Scrape URLs |
+| POST | `/v1/ingest/url/stream` | Stream URL scraping progress |
 | POST | `/v1/ingest/docs` | Parse documents |
 | POST | `/v1/ingest/api` | Fetch REST APIs |
 | POST | `/v1/chunk` | Chunk documents |
@@ -540,6 +539,7 @@ Swagger UI: `http://127.0.0.1:8000/docs`
 | POST | `/v1/pipelines/ingest` | Full ingest pipeline |
 | POST | `/v1/pipelines/query` | Query pipeline |
 | POST | `/v1/chat` | RAG chat turn |
+| POST | `/v1/chat/stream` | Stream RAG chat progress and tokens |
 
 ---
 

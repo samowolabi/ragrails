@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 class StoreRequest(BaseModel):
     embedded_chunks: list[dict]
-    vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant"
+    vector_db: Literal["qdrant", "qdrant_cloud", "pinecone", "weaviate"] = "qdrant"
     collection: str | None = None
     url: str | None = None
     batch_size: int = 64
@@ -32,7 +32,7 @@ class EditRequest(BaseModel):
     provider: str = "voyage"
     model: str = "voyage-3"
     embedder_options: dict | None = None
-    vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant"
+    vector_db: Literal["qdrant", "qdrant_cloud", "pinecone", "weaviate"] = "qdrant"
     collection: str | None = None
     url: str | None = None
     batch_size: int = 64
@@ -51,7 +51,7 @@ class EditResponse(BaseModel):
 
 class DeleteRequest(BaseModel):
     ids: list[str]
-    vector_db: Literal["qdrant", "pinecone", "weaviate"] = "qdrant"
+    vector_db: Literal["qdrant", "qdrant_cloud", "pinecone", "weaviate"] = "qdrant"
     collection: str | None = None
     url: str | None = None
     options: dict | None = None

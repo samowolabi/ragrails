@@ -15,7 +15,9 @@ class ServerAppTests(unittest.TestCase):
             "/v1/health",
             "/v1/ingest/api",
             "/v1/ingest/url",
+            "/v1/ingest/url/stream",
             "/v1/ingest/docs",
+            "/v1/ingest/docs/upload",
             "/v1/chunk",
             "/v1/embed",
             "/v1/store",
@@ -25,6 +27,7 @@ class ServerAppTests(unittest.TestCase):
             "/v1/pipelines/ingest",
             "/v1/pipelines/query",
             "/v1/chat",
+            "/v1/chat/stream",
         }
 
         self.assertLessEqual(expected, paths)
@@ -33,13 +36,13 @@ class ServerAppTests(unittest.TestCase):
         base = Path("ragrails/interfaces/server")
         expected = {
             "README.md": ["/v1/health", "/v1/chat", "/v1/pipelines/ingest"],
-            "ingestion/README.md": ["/v1/ingest/api", "/v1/ingest/url", "/v1/ingest/docs"],
+            "ingestion/README.md": ["/v1/ingest/api", "/v1/ingest/url", "/v1/ingest/url/stream", "/v1/ingest/docs", "/v1/ingest/docs/upload"],
             "chunking/README.md": ["/v1/chunk"],
             "embedding/README.md": ["/v1/embed"],
             "storing/README.md": ["/v1/store", "/v1/edit", "/v1/delete"],
             "retrieval/README.md": ["/v1/retrieve"],
             "pipeline/README.md": ["/v1/pipelines/ingest", "/v1/pipelines/query"],
-            "chat/README.md": ["/v1/chat"],
+            "chat/README.md": ["/v1/chat", "/v1/chat/stream"],
         }
 
         for relative_path, markers in expected.items():

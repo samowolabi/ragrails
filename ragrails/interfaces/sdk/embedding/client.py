@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ragrails.interfaces.sdk.shared import missing_extra
+from ragrails.interfaces.sdk.shared import configured, merge_config, missing_extra
 from ragrails.types import EmbedResult
 
 
@@ -12,12 +12,23 @@ class EmbeddingMixin:
     def embedder(
         self,
         *,
-        provider: str = "voyage",
-        model: str = "voyage-3",
+        provider: str | None = None,
+        model: str | None = None,
         input_type: str = "document",
         options: dict[str, Any] | None = None,
     ):
         """Create an embedding model object."""
+        defaults = configured(self, "embedding")
+        config = merge_config(defaults, {
+            "provider": provider,
+            "model": model,
+            "input_type": input_type,
+            "options": options,
+        })
+        provider = config.get("provider", "voyage")
+        model = config.get("model", "voyage-3")
+        input_type = config.get("input_type", "document")
+        options = config.get("options")
         self._validate_embedder_args(
             provider=provider,
             model=model,
@@ -40,10 +51,13 @@ class EmbeddingMixin:
         self,
         *,
         chunks: list[dict],
-        embedder,
+        embedder=None,
+        input_type: str = "document",
         batch_size: int = 64,
     ) -> EmbedResult:
         """Embed chunk dictionaries and return embedded chunks in memory."""
+        if embedder is None:
+            embedder = self.embedder(input_type=input_type)
         self._validate_embed_args(
             chunks=chunks,
             embedder=embedder,

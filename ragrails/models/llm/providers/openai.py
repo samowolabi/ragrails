@@ -39,7 +39,7 @@ class OpenAIProvider(LLMProvider):
             try:
                 from openai import OpenAI
             except ImportError as exc:
-                raise RuntimeError('OpenAI support requires: pip install "ragrails[openai]"') from exc
+                raise RuntimeError("OpenAI support is missing. Reinstall or upgrade ragrails.") from exc
             api_key = os.environ.get("OPENAI_API_KEY")
             if not api_key:
                 raise ValueError("OPENAI_API_KEY environment variable not set.")

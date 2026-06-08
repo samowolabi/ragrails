@@ -14,6 +14,22 @@ Commands for getting external content into SDK ingestion result shapes.
 ## Examples
 
 ```bash
+ragrails setup-url
+```
+
+For automation:
+
+```bash
+ragrails setup-url --browser chromium
+```
+
+Show the underlying Playwright install command:
+
+```bash
+ragrails setup-url --browser chromium --verbose
+```
+
+```bash
 ragrails scrape https://example.com/docs --mode full --max-pages 10
 ```
 
